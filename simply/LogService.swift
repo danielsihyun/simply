@@ -47,14 +47,14 @@ final class LogService: ObservableObject {
 
     // MARK: - Add entry
     @MainActor
-    func addEntry(userId: UUID, food: Food, grams: Float) async {
+    func addEntry(userId: UUID, food: Food, grams: Float, mealIndex: Int = 0) async {
         let macros = food.macros(forGrams: grams)
         let nextSort = (todayEntries.last?.sortOrder ?? -1) + 1
 
         let insert = FoodLogInsert(
             userId: userId,
             logDate: today,
-            mealIndex: 0,
+            mealIndex: mealIndex,
             sortOrder: nextSort,
             foodId: food.id,
             customFoodId: nil,

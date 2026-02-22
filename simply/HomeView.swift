@@ -11,6 +11,7 @@ struct HomeView: View {
     @State private var mode: InputMode = .search
     @State private var pendingFood: Food?
     @State private var lastWasEnter = false
+    @State private var currentMealIndex = 0
     @FocusState private var inputFocused: Bool
 
     enum InputMode { case search, grams }
@@ -63,6 +64,28 @@ struct HomeView: View {
                         // Food entries (notepad)
                         mealEntriesView
 
+                        // New meal divider - shows after double-enter
+                        if !logService.todayEntries.isEmpty {
+                            let latestMeal = logService.todayEntries.map(\.mealIndex).max() ?? 0
+                            if currentMealIndex > latestMeal {
+                                Rectangle()
+                                    .fill(Color.white.opacity(0.04))
+                                    .frame(height: 1)
+                                    .padding(.top, 14)
+                                    .padding(.bottom, 4)
+
+                                HStack {
+                                    Text("Meal \(currentMealIndex + 1)")
+                                        .font(.labelMealHeader)
+                                        .foregroundColor(.textMuted)
+                                        .textCase(.uppercase)
+                                        .tracking(0.8)
+                                    Spacer()
+                                }
+                                .padding(.bottom, 2)
+                            }
+                        }
+
                         // Inline input area
                         inputAreaView
 
@@ -81,6 +104,8 @@ struct HomeView: View {
         .task {
             if let userId = authService.userId {
                 await logService.loadToday(userId: userId)
+                // Resume at the latest meal index
+                currentMealIndex = logService.todayEntries.map(\.mealIndex).max() ?? 0
             }
         }
         .onAppear {
@@ -244,6 +269,15 @@ struct HomeView: View {
             }
             .padding(.vertical, 4)
 
+            // Double-enter hint
+            if mode == .search && lastWasEnter && inputText.isEmpty {
+                Text("press enter again to start a new meal")
+                    .font(.system(size: 11))
+                    .foregroundColor(.textVeryMuted)
+                    .italic()
+                    .padding(.bottom, 4)
+            }
+
             // Search suggestions dropdown
             if mode == .search && !inputText.isEmpty && !foodService.searchResults.isEmpty {
                 SuggestionDropdown(
@@ -280,7 +314,8 @@ struct HomeView: View {
             // Search mode
             if inputText.trimmingCharacters(in: .whitespaces).isEmpty {
                 if lastWasEnter {
-                    // Double enter = new meal (increment meal_index)
+                    // Double enter = new meal
+                    currentMealIndex += 1
                     lastWasEnter = false
                 } else {
                     lastWasEnter = true
@@ -302,7 +337,7 @@ struct HomeView: View {
         let grams = Float(inputText) ?? food.servingGrams
 
         Task {
-            await logService.addEntry(userId: userId, food: food, grams: grams)
+            await logService.addEntry(userId: userId, food: food, grams: grams, mealIndex: currentMealIndex)
         }
 
         pendingFood = nil
