@@ -1,11 +1,48 @@
 import SwiftUI
 import Combine
 
-// MARK: - Liquid Glass Modifier
-struct GlassBackgroundModifier: ViewModifier {
-    func body(content: Content) -> some View {
-        content
-            .glassEffect(.regular, in: .capsule)
+// MARK: - Date Nav Action Holder (reference type — prevents SwiftUI re-renders)
+class DateNavAction {
+    var selectedDate = Date()
+    var onNavigate: ((Date, Edge) -> Void) = { _, _ in }
+
+    func goBack() {
+        let newDate = Calendar.current.date(byAdding: .day, value: -1, to: selectedDate) ?? selectedDate
+        onNavigate(newDate, .trailing)
+    }
+
+    func goForward() {
+        let cal = Calendar.current
+        let tomorrow = cal.date(byAdding: .day, value: 1, to: Date())!
+        guard !cal.isDate(selectedDate, inSameDayAs: tomorrow) else { return }
+        let newDate = cal.date(byAdding: .day, value: 1, to: selectedDate) ?? selectedDate
+        onNavigate(newDate, .leading)
+    }
+}
+
+// MARK: - Date Navigation Buttons (native Liquid Glass)
+struct DateNavButtons: View {
+    let actions: DateNavAction
+    @Namespace private var ns
+
+    var body: some View {
+        GlassEffectContainer {
+            HStack(spacing: 0) {
+                Button { actions.goBack() } label: {
+                    Image(systemName: "chevron.left")
+                        .frame(width: 24, height: 30)
+                }
+                .buttonStyle(.glass)
+                .glassEffectUnion(id: "dateNav", namespace: ns)
+
+                Button { actions.goForward() } label: {
+                    Image(systemName: "chevron.right")
+                        .frame(width: 24, height: 30)
+                }
+                .buttonStyle(.glass)
+                .glassEffectUnion(id: "dateNav", namespace: ns)
+            }
+        }
     }
 }
 
@@ -23,6 +60,7 @@ struct HomeView: View {
     @State private var suppressUndo = false
     @State private var selectedDate = Date()
     @State private var slideDirection: Edge = .trailing
+    @State private var dateNavAction = DateNavAction()
     @FocusState private var inputFocused: Bool
 
     enum InputMode { case search, grams }
@@ -67,87 +105,88 @@ struct HomeView: View {
         ZStack(alignment: .bottom) {
             Color.bgPrimary.ignoresSafeArea()
 
-            ScrollViewReader { proxy in
-                ScrollView {
-                    VStack(alignment: .leading, spacing: 0) {
-                        // Header (stays fixed, no transition)
-                        headerView
-
-                        // Transitioning content
-                        VStack(alignment: .leading, spacing: 0) {
-                            // Day summary
-                            DaySummaryView(
-                                cal: logService.totalCalories,
-                                protein: logService.totalProtein,
-                                carbs: logService.totalCarbs,
-                                fat: logService.totalFat,
-                                profile: authService.profile
-                            )
-                            .padding(.bottom, 24)
-
-                            // Food entries (notepad)
-                            mealEntriesView
-
-                            // New meal divider - shows after double-enter
-                            if !logService.todayEntries.isEmpty {
-                                let latestMeal = logService.todayEntries.map(\.mealIndex).max() ?? 0
-                                if currentMealIndex > latestMeal {
-                                    let existingMealCount = groupedEntries().count
-
-                                    Rectangle()
-                                        .fill(Color.white.opacity(0.04))
-                                        .frame(height: 1)
-                                        .padding(.top, 14)
-                                        .padding(.bottom, 4)
-
-                                    HStack {
-                                        Text("Meal \(existingMealCount + 1)")
-                                            .font(.labelMealHeader)
-                                            .foregroundColor(.textMuted)
-                                            .textCase(.uppercase)
-                                            .tracking(0.8)
-                                        Spacer()
-                                    }
-                                    .padding(.bottom, 2)
-                                }
-                            }
-
-                            // Inline input area
-                            inputAreaView
-
-                            // Bottom padding
-                            Spacer().frame(height: 120)
-                                .id("bottom")
-                        }
-                        .id(selectedDate)
-                        .transition(.asymmetric(
-                            insertion: .move(edge: slideDirection == .trailing ? .leading : .trailing),
-                            removal: .move(edge: slideDirection)
-                        ))
-                    }
+            VStack(alignment: .leading, spacing: 0) {
+                // Header - outside ScrollView, immune to slide animation
+                headerView
                     .padding(.horizontal, 18)
-                    .clipped()
+
+                ScrollViewReader { proxy in
+                    ScrollView {
+                        VStack(alignment: .leading, spacing: 0) {
+                            // Transitioning content
+                            VStack(alignment: .leading, spacing: 0) {
+                                // Day summary
+                                DaySummaryView(
+                                    cal: logService.totalCalories,
+                                    protein: logService.totalProtein,
+                                    carbs: logService.totalCarbs,
+                                    fat: logService.totalFat,
+                                    profile: authService.profile
+                                )
+                                .padding(.bottom, 24)
+
+                                // Food entries (notepad)
+                                mealEntriesView
+
+                                // New meal divider - shows after double-enter
+                                if !logService.todayEntries.isEmpty {
+                                    let latestMeal = logService.todayEntries.map(\.mealIndex).max() ?? 0
+                                    if currentMealIndex > latestMeal {
+                                        let existingMealCount = groupedEntries().count
+
+                                        Rectangle()
+                                            .fill(Color.white.opacity(0.04))
+                                            .frame(height: 1)
+                                            .padding(.top, 14)
+                                            .padding(.bottom, 4)
+
+                                        HStack {
+                                            Text("Meal \(existingMealCount + 1)")
+                                                .font(.labelMealHeader)
+                                                .foregroundColor(.textMuted)
+                                                .textCase(.uppercase)
+                                                .tracking(0.8)
+                                            Spacer()
+                                        }
+                                        .padding(.bottom, 2)
+                                    }
+                                }
+
+                                // Inline input area
+                                inputAreaView
+
+                                // Bottom padding
+                                Spacer().frame(height: 120)
+                                    .id("bottom")
+                            }
+                            .id(selectedDate)
+                            .transition(.asymmetric(
+                                insertion: .move(edge: slideDirection == .trailing ? .leading : .trailing),
+                                removal: .move(edge: slideDirection)
+                            ))
+                            .animation(.easeInOut(duration: 0.3), value: selectedDate)
+                        }
+                        .padding(.horizontal, 18)
+                        .clipped()
+                    }
+                    .scrollDismissesKeyboard(.interactively)
                 }
-                .scrollDismissesKeyboard(.interactively)
             }
         }
         .onTapGesture {
             inputFocused = true
         }
         .task {
+            // Wire up navigation callback
+            dateNavAction.onNavigate = { [self] newDate, direction in
+                navigateToDate(newDate, direction: direction)
+            }
+            dateNavAction.selectedDate = selectedDate
+
             if let userId = authService.userId {
                 await logService.loadEntries(userId: userId, date: selectedDate)
                 currentMealIndex = logService.todayEntries.map(\.mealIndex).max() ?? 0
             }
-        }
-        .onChange(of: selectedDate) { _, _ in
-            // Reset input state (data already loaded by navigateToDate)
-            inputText = ""
-            mode = .search
-            pendingFood = nil
-            lastWasEnter = false
-            suppressUndo = true
-            currentMealIndex = logService.todayEntries.map(\.mealIndex).max() ?? 0
         }
         .onAppear {
             DispatchQueue.main.asyncAfter(deadline: .now() + 0.5) {
@@ -218,30 +257,7 @@ struct HomeView: View {
                     .cornerRadius(10)
                 }
 
-                // Date navigation - native Liquid Glass
-                HStack(spacing: 0) {
-                    Button {
-                        let newDate = Calendar.current.date(byAdding: .day, value: -1, to: selectedDate) ?? selectedDate
-                        navigateToDate(newDate, direction: .trailing)
-                    } label: {
-                        Image(systemName: "chevron.left")
-                            .font(.system(size: 15, weight: .medium))
-                            .foregroundStyle(.white)
-                            .frame(width: 44, height: 36)
-                    }
-
-                    Button {
-                        let newDate = Calendar.current.date(byAdding: .day, value: 1, to: selectedDate) ?? selectedDate
-                        navigateToDate(newDate, direction: .leading)
-                    } label: {
-                        Image(systemName: "chevron.right")
-                            .font(.system(size: 15, weight: .medium))
-                            .foregroundStyle(isTomorrow ? .white.opacity(0.2) : .white)
-                            .frame(width: 44, height: 36)
-                    }
-                    .disabled(isTomorrow)
-                }
-                .modifier(GlassBackgroundModifier())
+                DateNavButtons(actions: dateNavAction)
             }
         }
         .padding(.top, 4)
@@ -406,17 +422,20 @@ struct HomeView: View {
     private func navigateToDate(_ newDate: Date, direction: Edge) {
         guard let userId = authService.userId else { return }
         slideDirection = direction
+        dateNavAction.selectedDate = newDate
+
+        // Reset input state immediately
+        inputText = ""
+        mode = .search
+        pendingFood = nil
+        lastWasEnter = false
+        suppressUndo = true
 
         Task {
-            // Preload data into a temporary array
             let entries = await logService.preloadEntries(userId: userId, date: newDate)
-
-            // Swap data + date together inside animation
-            withAnimation(.easeInOut(duration: 0.3)) {
-                logService.todayEntries = entries
-                selectedDate = newDate
-            }
+            logService.todayEntries = entries
             currentMealIndex = entries.map(\.mealIndex).max() ?? 0
+            selectedDate = newDate
         }
     }
 
