@@ -210,40 +210,49 @@ struct HomeView: View {
                     .cornerRadius(10)
                 }
 
-                // Date navigation
+                // Date navigation - liquid glass pill
                 HStack(spacing: 0) {
                     Button {
                         let newDate = Calendar.current.date(byAdding: .day, value: -1, to: selectedDate) ?? selectedDate
                         navigateToDate(newDate, direction: .trailing)
                     } label: {
                         Image(systemName: "chevron.left")
-                            .font(.system(size: 13, weight: .semibold))
-                            .foregroundColor(.white.opacity(0.5))
-                            .frame(width: 36, height: 32)
+                            .font(.system(size: 15, weight: .medium))
+                            .foregroundColor(.white.opacity(0.85))
+                            .frame(width: 44, height: 36)
                     }
-
-                    Rectangle()
-                        .fill(Color.white.opacity(0.08))
-                        .frame(width: 1, height: 16)
 
                     Button {
                         let newDate = Calendar.current.date(byAdding: .day, value: 1, to: selectedDate) ?? selectedDate
                         navigateToDate(newDate, direction: .leading)
                     } label: {
                         Image(systemName: "chevron.right")
-                            .font(.system(size: 13, weight: .semibold))
-                            .foregroundColor(isTomorrow ? .white.opacity(0.12) : .white.opacity(0.5))
-                            .frame(width: 36, height: 32)
+                            .font(.system(size: 15, weight: .medium))
+                            .foregroundColor(isTomorrow ? .white.opacity(0.15) : .white.opacity(0.85))
+                            .frame(width: 44, height: 36)
                     }
                     .disabled(isTomorrow)
                 }
                 .background(
-                    RoundedRectangle(cornerRadius: 10)
+                    Capsule()
                         .fill(.ultraThinMaterial)
+                        .shadow(color: .white.opacity(0.06), radius: 0, y: -0.5)
                         .overlay(
-                            RoundedRectangle(cornerRadius: 10)
-                                .stroke(Color.white.opacity(0.08), lineWidth: 0.5)
+                            Capsule()
+                                .stroke(
+                                    LinearGradient(
+                                        colors: [
+                                            .white.opacity(0.25),
+                                            .white.opacity(0.08),
+                                            .white.opacity(0.03)
+                                        ],
+                                        startPoint: .top,
+                                        endPoint: .bottom
+                                    ),
+                                    lineWidth: 0.75
+                                )
                         )
+                        .shadow(color: .black.opacity(0.3), radius: 8, y: 4)
                 )
             }
         }
