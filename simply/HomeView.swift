@@ -12,6 +12,7 @@ struct HomeView: View {
     @State private var pendingFood: Food?
     @State private var lastWasEnter = false
     @State private var currentMealIndex = 0
+    @State private var suppressUndo = false
     @FocusState private var inputFocused: Bool
 
     enum InputMode { case search, grams }
@@ -238,16 +239,18 @@ struct HomeView: View {
                         foodService.search(query: newValue)
 
                         // Deleting back to empty while on a pending new meal = undo
-                        if newValue.isEmpty && !oldValue.isEmpty {
+                        if newValue.isEmpty && !oldValue.isEmpty && !suppressUndo {
                             let latestMeal = logService.todayEntries.map(\.mealIndex).max() ?? 0
                             if currentMealIndex > latestMeal {
                                 currentMealIndex = latestMeal
                             }
                         }
                     }
+                    suppressUndo = false
                 }
-                .onSubmit {
+                .onKeyPress(.return) {
                     handleSubmit()
+                    return .handled
                 }
 
                 if mode == .grams {
@@ -311,19 +314,14 @@ struct HomeView: View {
         inputText = "\(Int(food.servingGrams))"
         foodService.clearSearch()
         inputFocused = true
-        DispatchQueue.main.asyncAfter(deadline: .now() + 0.1) {
-            inputFocused = true
-        }
     }
 
     private func cancelPending() {
         pendingFood = nil
         mode = .search
+        suppressUndo = true
         inputText = ""
         inputFocused = true
-        DispatchQueue.main.asyncAfter(deadline: .now() + 0.1) {
-            inputFocused = true
-        }
     }
 
     private func handleSubmit() {
@@ -356,9 +354,6 @@ struct HomeView: View {
 
         // Always keep focus
         inputFocused = true
-        DispatchQueue.main.asyncAfter(deadline: .now() + 0.1) {
-            inputFocused = true
-        }
     }
 
     private func confirmFood() {
@@ -369,13 +364,11 @@ struct HomeView: View {
 
         Task {
             await logService.addEntry(userId: userId, food: food, grams: grams, mealIndex: currentMealIndex)
-            // Re-focus after the view updates with the new entry
-            try? await Task.sleep(nanoseconds: 100_000_000)
-            inputFocused = true
         }
 
         pendingFood = nil
         mode = .search
+        suppressUndo = true
         inputText = ""
         lastWasEnter = false
         inputFocused = true
