@@ -300,6 +300,9 @@ struct HomeView: View {
         inputText = "\(Int(food.servingGrams))"
         foodService.clearSearch()
         inputFocused = true
+        DispatchQueue.main.asyncAfter(deadline: .now() + 0.1) {
+            inputFocused = true
+        }
     }
 
     private func cancelPending() {
@@ -307,6 +310,9 @@ struct HomeView: View {
         mode = .search
         inputText = ""
         inputFocused = true
+        DispatchQueue.main.asyncAfter(deadline: .now() + 0.1) {
+            inputFocused = true
+        }
     }
 
     private func handleSubmit() {
@@ -320,6 +326,9 @@ struct HomeView: View {
                     currentMealIndex += 1
                     lastWasEnter = false
                     inputFocused = true
+                    DispatchQueue.main.asyncAfter(deadline: .now() + 0.1) {
+                        inputFocused = true
+                    }
                 } else {
                     lastWasEnter = true
                     inputFocused = true
@@ -342,6 +351,9 @@ struct HomeView: View {
 
         Task {
             await logService.addEntry(userId: userId, food: food, grams: grams, mealIndex: currentMealIndex)
+            // Re-focus after the view updates with the new entry
+            try? await Task.sleep(nanoseconds: 100_000_000)
+            inputFocused = true
         }
 
         pendingFood = nil
