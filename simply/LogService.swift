@@ -27,6 +27,25 @@ final class LogService: ObservableObject {
     var totalCarbs: Float { todayEntries.reduce(0) { $0 + $1.carbs } }
     var totalFat: Float { todayEntries.reduce(0) { $0 + $1.fat } }
 
+    // MARK: - Preload entries (returns without updating @Published)
+    func preloadEntries(userId: UUID, date: Date) async -> [FoodLogEntry] {
+        do {
+            let entries: [FoodLogEntry] = try await supabase
+                .from("food_log")
+                .select()
+                .eq("user_id", value: userId.uuidString)
+                .eq("log_date", value: dateString(for: date))
+                .order("meal_index")
+                .order("sort_order")
+                .execute()
+                .value
+            return entries
+        } catch {
+            print("Preload entries error: \(error)")
+            return []
+        }
+    }
+
     // MARK: - Load entries for a date
     @MainActor
     func loadEntries(userId: UUID, date: Date) async {

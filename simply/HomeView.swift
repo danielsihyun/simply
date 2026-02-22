@@ -409,13 +409,17 @@ struct HomeView: View {
     private func navigateToDate(_ newDate: Date, direction: Edge) {
         guard let userId = authService.userId else { return }
         slideDirection = direction
+
         Task {
-            // Load data FIRST
-            await logService.loadEntries(userId: userId, date: newDate)
-            // THEN animate the date change with data already present
+            // Preload data into a temporary array
+            let entries = await logService.preloadEntries(userId: userId, date: newDate)
+
+            // Swap data + date together inside animation
             withAnimation(.easeInOut(duration: 0.3)) {
+                logService.todayEntries = entries
                 selectedDate = newDate
             }
+            currentMealIndex = entries.map(\.mealIndex).max() ?? 0
         }
     }
 
