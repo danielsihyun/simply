@@ -32,7 +32,7 @@ struct HomeView: View {
 
     private var dateString: String {
         let f = DateFormatter()
-        f.dateFormat = "MMM d"
+        f.dateFormat = "MMM d, yyyy"
         return f.string(from: selectedDate)
     }
 
