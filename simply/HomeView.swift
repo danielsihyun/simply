@@ -142,6 +142,31 @@ struct HomeView: View {
                 inputFocused = true
             }
         }
+        .simultaneousGesture(
+            DragGesture(minimumDistance: 50, coordinateSpace: .local)
+                .onEnded { value in
+                    let horizontal = value.translation.width
+                    let vertical = value.translation.height
+                    // Only trigger if clearly horizontal
+                    guard abs(horizontal) > abs(vertical) * 2 else { return }
+
+                    if horizontal < 0 {
+                        // Swipe left → next day
+                        let cal = Calendar.current
+                        let tomorrow = cal.date(byAdding: .day, value: 1, to: Date())!
+                        if !cal.isDate(selectedDate, inSameDayAs: tomorrow) {
+                            withAnimation(.easeInOut(duration: 0.2)) {
+                                selectedDate = cal.date(byAdding: .day, value: 1, to: selectedDate) ?? selectedDate
+                            }
+                        }
+                    } else {
+                        // Swipe right → previous day
+                        withAnimation(.easeInOut(duration: 0.2)) {
+                            selectedDate = Calendar.current.date(byAdding: .day, value: -1, to: selectedDate) ?? selectedDate
+                        }
+                    }
+                }
+        )
     }
 
     // MARK: - Header
