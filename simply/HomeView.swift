@@ -22,6 +22,10 @@ struct HomeView: View {
         Calendar.current.isDateInToday(selectedDate)
     }
 
+    private var isTomorrow: Bool {
+        Calendar.current.isDateInTomorrow(selectedDate)
+    }
+
     private var dayName: String {
         if isToday { return "Today" }
         if Calendar.current.isDateInYesterday(selectedDate) { return "Yesterday" }
@@ -201,10 +205,10 @@ struct HomeView: View {
                     } label: {
                         Image(systemName: "chevron.right")
                             .font(.system(size: 13, weight: .semibold))
-                            .foregroundColor(isToday ? .white.opacity(0.12) : .white.opacity(0.5))
+                            .foregroundColor(isTomorrow ? .white.opacity(0.12) : .white.opacity(0.5))
                             .frame(width: 36, height: 32)
                     }
-                    .disabled(isToday)
+                    .disabled(isTomorrow)
                 }
                 .background(
                     RoundedRectangle(cornerRadius: 10)
