@@ -68,6 +68,8 @@ struct HomeView: View {
                         if !logService.todayEntries.isEmpty {
                             let latestMeal = logService.todayEntries.map(\.mealIndex).max() ?? 0
                             if currentMealIndex > latestMeal {
+                                let existingMealCount = groupedEntries().count
+
                                 Rectangle()
                                     .fill(Color.white.opacity(0.04))
                                     .frame(height: 1)
@@ -75,7 +77,7 @@ struct HomeView: View {
                                     .padding(.bottom, 4)
 
                                 HStack {
-                                    Text("Meal \(currentMealIndex + 1)")
+                                    Text("Meal \(existingMealCount + 1)")
                                         .font(.labelMealHeader)
                                         .foregroundColor(.textMuted)
                                         .textCase(.uppercase)
