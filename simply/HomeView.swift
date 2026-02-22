@@ -14,6 +14,7 @@ struct HomeView: View {
     @State private var currentMealIndex = 0
     @State private var suppressUndo = false
     @State private var selectedDate = Date()
+    @State private var slideDirection: Edge = .trailing
     @FocusState private var inputFocused: Bool
 
     enum InputMode { case search, grams }
@@ -61,52 +62,60 @@ struct HomeView: View {
             ScrollViewReader { proxy in
                 ScrollView {
                     VStack(alignment: .leading, spacing: 0) {
-                        // Header
+                        // Header (stays fixed, no transition)
                         headerView
 
-                        // Day summary
-                        DaySummaryView(
-                            cal: logService.totalCalories,
-                            protein: logService.totalProtein,
-                            carbs: logService.totalCarbs,
-                            fat: logService.totalFat,
-                            profile: authService.profile
-                        )
-                        .padding(.bottom, 24)
+                        // Transitioning content
+                        VStack(alignment: .leading, spacing: 0) {
+                            // Day summary
+                            DaySummaryView(
+                                cal: logService.totalCalories,
+                                protein: logService.totalProtein,
+                                carbs: logService.totalCarbs,
+                                fat: logService.totalFat,
+                                profile: authService.profile
+                            )
+                            .padding(.bottom, 24)
 
-                        // Food entries (notepad)
-                        mealEntriesView
+                            // Food entries (notepad)
+                            mealEntriesView
 
-                        // New meal divider - shows after double-enter
-                        if !logService.todayEntries.isEmpty {
-                            let latestMeal = logService.todayEntries.map(\.mealIndex).max() ?? 0
-                            if currentMealIndex > latestMeal {
-                                let existingMealCount = groupedEntries().count
+                            // New meal divider - shows after double-enter
+                            if !logService.todayEntries.isEmpty {
+                                let latestMeal = logService.todayEntries.map(\.mealIndex).max() ?? 0
+                                if currentMealIndex > latestMeal {
+                                    let existingMealCount = groupedEntries().count
 
-                                Rectangle()
-                                    .fill(Color.white.opacity(0.04))
-                                    .frame(height: 1)
-                                    .padding(.top, 14)
-                                    .padding(.bottom, 4)
+                                    Rectangle()
+                                        .fill(Color.white.opacity(0.04))
+                                        .frame(height: 1)
+                                        .padding(.top, 14)
+                                        .padding(.bottom, 4)
 
-                                HStack {
-                                    Text("Meal \(existingMealCount + 1)")
-                                        .font(.labelMealHeader)
-                                        .foregroundColor(.textMuted)
-                                        .textCase(.uppercase)
-                                        .tracking(0.8)
-                                    Spacer()
+                                    HStack {
+                                        Text("Meal \(existingMealCount + 1)")
+                                            .font(.labelMealHeader)
+                                            .foregroundColor(.textMuted)
+                                            .textCase(.uppercase)
+                                            .tracking(0.8)
+                                        Spacer()
+                                    }
+                                    .padding(.bottom, 2)
                                 }
-                                .padding(.bottom, 2)
                             }
+
+                            // Inline input area
+                            inputAreaView
+
+                            // Bottom padding
+                            Spacer().frame(height: 120)
+                                .id("bottom")
                         }
-
-                        // Inline input area
-                        inputAreaView
-
-                        // Bottom padding
-                        Spacer().frame(height: 120)
-                            .id("bottom")
+                        .id(selectedDate)
+                        .transition(.asymmetric(
+                            insertion: .move(edge: slideDirection),
+                            removal: .move(edge: slideDirection == .trailing ? .leading : .trailing)
+                        ))
                     }
                     .padding(.horizontal, 18)
                 }
