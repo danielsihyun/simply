@@ -13,22 +13,27 @@ struct HomeView: View {
     @State private var lastWasEnter = false
     @State private var currentMealIndex = 0
     @State private var suppressUndo = false
+    @State private var selectedDate = Date()
     @FocusState private var inputFocused: Bool
 
     enum InputMode { case search, grams }
 
-    private var today: Date { Date() }
+    private var isToday: Bool {
+        Calendar.current.isDateInToday(selectedDate)
+    }
 
     private var dayName: String {
+        if isToday { return "Today" }
+        if Calendar.current.isDateInYesterday(selectedDate) { return "Yesterday" }
         let f = DateFormatter()
         f.dateFormat = "EEEE"
-        return f.string(from: today)
+        return f.string(from: selectedDate)
     }
 
     private var dateString: String {
         let f = DateFormatter()
         f.dateFormat = "MMM d"
-        return f.string(from: today)
+        return f.string(from: selectedDate)
     }
 
     // Live preview macros for grams mode
@@ -106,9 +111,23 @@ struct HomeView: View {
         }
         .task {
             if let userId = authService.userId {
-                await logService.loadToday(userId: userId)
-                // Resume at the latest meal index
+                await logService.loadEntries(userId: userId, date: selectedDate)
                 currentMealIndex = logService.todayEntries.map(\.mealIndex).max() ?? 0
+            }
+        }
+        .onChange(of: selectedDate) { _, newDate in
+            // Reset state for new date
+            inputText = ""
+            mode = .search
+            pendingFood = nil
+            lastWasEnter = false
+            suppressUndo = true
+
+            Task {
+                if let userId = authService.userId {
+                    await logService.loadEntries(userId: userId, date: newDate)
+                    currentMealIndex = logService.todayEntries.map(\.mealIndex).max() ?? 0
+                }
             }
         }
         .onAppear {
@@ -120,7 +139,7 @@ struct HomeView: View {
 
     // MARK: - Header
     private var headerView: some View {
-        HStack(alignment: .top) {
+        HStack(alignment: .center) {
             VStack(alignment: .leading, spacing: 1) {
                 Text(dayName)
                     .font(.headerDay)
@@ -131,22 +150,70 @@ struct HomeView: View {
                     .font(.headerDate)
                     .foregroundColor(.textSecondary)
             }
+            .onTapGesture {
+                if !isToday {
+                    withAnimation(.easeInOut(duration: 0.2)) {
+                        selectedDate = Date()
+                    }
+                }
+            }
 
             Spacer()
 
-            // Streak badge
-            if let profile = authService.profile, profile.streakCurrent > 0 {
-                HStack(spacing: 2) {
-                    Text("🔥")
-                        .font(.system(size: 12))
-                    Text("\(profile.streakCurrent)")
-                        .font(.system(size: 12, weight: .semibold))
-                        .foregroundColor(.streakColor)
+            // Date nav + streak
+            HStack(spacing: 8) {
+                // Streak badge
+                if let profile = authService.profile, profile.streakCurrent > 0 {
+                    HStack(spacing: 2) {
+                        Text("🔥")
+                            .font(.system(size: 12))
+                        Text("\(profile.streakCurrent)")
+                            .font(.system(size: 12, weight: .semibold))
+                            .foregroundColor(.streakColor)
+                    }
+                    .padding(.horizontal, 10)
+                    .padding(.vertical, 5)
+                    .background(Color.bgStreakBadge)
+                    .cornerRadius(10)
                 }
-                .padding(.horizontal, 10)
-                .padding(.vertical, 5)
-                .background(Color.bgStreakBadge)
-                .cornerRadius(10)
+
+                // Date navigation
+                HStack(spacing: 0) {
+                    Button {
+                        withAnimation(.easeInOut(duration: 0.2)) {
+                            selectedDate = Calendar.current.date(byAdding: .day, value: -1, to: selectedDate) ?? selectedDate
+                        }
+                    } label: {
+                        Image(systemName: "chevron.left")
+                            .font(.system(size: 13, weight: .semibold))
+                            .foregroundColor(.white.opacity(0.5))
+                            .frame(width: 36, height: 32)
+                    }
+
+                    Rectangle()
+                        .fill(Color.white.opacity(0.08))
+                        .frame(width: 1, height: 16)
+
+                    Button {
+                        withAnimation(.easeInOut(duration: 0.2)) {
+                            selectedDate = Calendar.current.date(byAdding: .day, value: 1, to: selectedDate) ?? selectedDate
+                        }
+                    } label: {
+                        Image(systemName: "chevron.right")
+                            .font(.system(size: 13, weight: .semibold))
+                            .foregroundColor(isToday ? .white.opacity(0.12) : .white.opacity(0.5))
+                            .frame(width: 36, height: 32)
+                    }
+                    .disabled(isToday)
+                }
+                .background(
+                    RoundedRectangle(cornerRadius: 10)
+                        .fill(.ultraThinMaterial)
+                        .overlay(
+                            RoundedRectangle(cornerRadius: 10)
+                                .stroke(Color.white.opacity(0.08), lineWidth: 0.5)
+                        )
+                )
             }
         }
         .padding(.top, 4)
@@ -363,7 +430,7 @@ struct HomeView: View {
         let grams = Float(inputText) ?? food.servingGrams
 
         Task {
-            await logService.addEntry(userId: userId, food: food, grams: grams, mealIndex: currentMealIndex)
+            await logService.addEntry(userId: userId, food: food, grams: grams, mealIndex: currentMealIndex, date: selectedDate)
         }
 
         pendingFood = nil

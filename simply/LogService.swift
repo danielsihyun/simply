@@ -1,6 +1,6 @@
 import Foundation
-import Supabase
 import Combine
+import Supabase
 
 final class LogService: ObservableObject {
     @Published var todayEntries: [FoodLogEntry] = []
@@ -17,22 +17,26 @@ final class LogService: ObservableObject {
         dateFormatter.string(from: Date())
     }
 
+    func dateString(for date: Date) -> String {
+        dateFormatter.string(from: date)
+    }
+
     // MARK: - Total macros from entries (real-time, no server round-trip)
     var totalCalories: Float { todayEntries.reduce(0) { $0 + $1.calories } }
     var totalProtein: Float { todayEntries.reduce(0) { $0 + $1.protein } }
     var totalCarbs: Float { todayEntries.reduce(0) { $0 + $1.carbs } }
     var totalFat: Float { todayEntries.reduce(0) { $0 + $1.fat } }
 
-    // MARK: - Load today's entries
+    // MARK: - Load entries for a date
     @MainActor
-    func loadToday(userId: UUID) async {
+    func loadEntries(userId: UUID, date: Date) async {
         isLoading = true
         do {
             let entries: [FoodLogEntry] = try await supabase
                 .from("food_log")
                 .select()
                 .eq("user_id", value: userId.uuidString)
-                .eq("log_date", value: today)
+                .eq("log_date", value: dateString(for: date))
                 .order("meal_index")
                 .order("sort_order")
                 .execute()
@@ -45,15 +49,21 @@ final class LogService: ObservableObject {
         isLoading = false
     }
 
+    // MARK: - Load today's entries
+    @MainActor
+    func loadToday(userId: UUID) async {
+        await loadEntries(userId: userId, date: Date())
+    }
+
     // MARK: - Add entry
     @MainActor
-    func addEntry(userId: UUID, food: Food, grams: Float, mealIndex: Int = 0) async {
+    func addEntry(userId: UUID, food: Food, grams: Float, mealIndex: Int = 0, date: Date = Date()) async {
         let macros = food.macros(forGrams: grams)
         let nextSort = (todayEntries.last?.sortOrder ?? -1) + 1
 
         let insert = FoodLogInsert(
             userId: userId,
-            logDate: today,
+            logDate: dateString(for: date),
             mealIndex: mealIndex,
             sortOrder: nextSort,
             foodId: food.id,
@@ -79,7 +89,7 @@ final class LogService: ObservableObject {
 
             // Fire and forget: update streak
             Task {
-                await updateStreak(logDate: today)
+                await updateStreak(logDate: dateString(for: date))
             }
         } catch {
             print("Add entry error: \(error)")
