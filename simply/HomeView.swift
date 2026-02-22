@@ -113,11 +113,12 @@ struct HomeView: View {
                         }
                         .id(selectedDate)
                         .transition(.asymmetric(
-                            insertion: .move(edge: slideDirection),
-                            removal: .move(edge: slideDirection == .trailing ? .leading : .trailing)
+                            insertion: .move(edge: slideDirection == .trailing ? .leading : .trailing),
+                            removal: .move(edge: slideDirection)
                         ))
                     }
                     .padding(.horizontal, 18)
+                    .clipped()
                 }
                 .scrollDismissesKeyboard(.interactively)
             }
@@ -164,13 +165,15 @@ struct HomeView: View {
                         let cal = Calendar.current
                         let tomorrow = cal.date(byAdding: .day, value: 1, to: Date())!
                         if !cal.isDate(selectedDate, inSameDayAs: tomorrow) {
-                            withAnimation(.easeInOut(duration: 0.2)) {
+                            slideDirection = .leading
+                            withAnimation(.easeInOut(duration: 0.3)) {
                                 selectedDate = cal.date(byAdding: .day, value: 1, to: selectedDate) ?? selectedDate
                             }
                         }
                     } else {
                         // Swipe right → previous day
-                        withAnimation(.easeInOut(duration: 0.2)) {
+                        slideDirection = .trailing
+                        withAnimation(.easeInOut(duration: 0.3)) {
                             selectedDate = Calendar.current.date(byAdding: .day, value: -1, to: selectedDate) ?? selectedDate
                         }
                     }
@@ -193,7 +196,8 @@ struct HomeView: View {
             }
             .onTapGesture {
                 if !isToday {
-                    withAnimation(.easeInOut(duration: 0.2)) {
+                    slideDirection = selectedDate < Date() ? .leading : .trailing
+                    withAnimation(.easeInOut(duration: 0.3)) {
                         selectedDate = Date()
                     }
                 }
@@ -221,7 +225,8 @@ struct HomeView: View {
                 // Date navigation
                 HStack(spacing: 0) {
                     Button {
-                        withAnimation(.easeInOut(duration: 0.2)) {
+                        slideDirection = .trailing
+                        withAnimation(.easeInOut(duration: 0.3)) {
                             selectedDate = Calendar.current.date(byAdding: .day, value: -1, to: selectedDate) ?? selectedDate
                         }
                     } label: {
@@ -236,7 +241,8 @@ struct HomeView: View {
                         .frame(width: 1, height: 16)
 
                     Button {
-                        withAnimation(.easeInOut(duration: 0.2)) {
+                        slideDirection = .leading
+                        withAnimation(.easeInOut(duration: 0.3)) {
                             selectedDate = Calendar.current.date(byAdding: .day, value: 1, to: selectedDate) ?? selectedDate
                         }
                     } label: {
