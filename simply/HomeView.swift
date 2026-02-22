@@ -400,10 +400,6 @@ struct DaySummaryView: View {
                 }
 
                 Spacer()
-
-                Text(remaining > 0 ? "\(Int(remaining)) left" : "goal hit ✓")
-                    .font(.system(size: 12))
-                    .foregroundColor(remaining > 0 ? .textSecondary : .proteinColor)
             }
             .padding(.bottom, 8)
 
@@ -528,12 +524,6 @@ struct FoodEntryRow: View {
             .padding(.top, 2)
         }
         .padding(.vertical, 5)
-        .overlay(
-            Rectangle()
-                .fill(Color.white.opacity(0.03))
-                .frame(height: 1),
-            alignment: .bottom
-        )
     }
 }
 
