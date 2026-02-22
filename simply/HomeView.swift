@@ -23,12 +23,15 @@ struct HomeView: View {
     }
 
     private var isTomorrow: Bool {
-        Calendar.current.isDateInTomorrow(selectedDate)
+        let cal = Calendar.current
+        let tomorrow = cal.date(byAdding: .day, value: 1, to: Date())!
+        return cal.isDate(selectedDate, inSameDayAs: tomorrow)
     }
 
     private var dayName: String {
         if isToday { return "Today" }
         if Calendar.current.isDateInYesterday(selectedDate) { return "Yesterday" }
+        if isTomorrow { return "Tomorrow" }
         let f = DateFormatter()
         f.dateFormat = "EEEE"
         return f.string(from: selectedDate)
