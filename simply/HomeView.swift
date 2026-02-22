@@ -132,20 +132,14 @@ struct HomeView: View {
                 currentMealIndex = logService.todayEntries.map(\.mealIndex).max() ?? 0
             }
         }
-        .onChange(of: selectedDate) { _, newDate in
-            // Reset state for new date
+        .onChange(of: selectedDate) { _, _ in
+            // Reset input state (data already loaded by navigateToDate)
             inputText = ""
             mode = .search
             pendingFood = nil
             lastWasEnter = false
             suppressUndo = true
-
-            Task {
-                if let userId = authService.userId {
-                    await logService.loadEntries(userId: userId, date: newDate)
-                    currentMealIndex = logService.todayEntries.map(\.mealIndex).max() ?? 0
-                }
-            }
+            currentMealIndex = logService.todayEntries.map(\.mealIndex).max() ?? 0
         }
         .onAppear {
             DispatchQueue.main.asyncAfter(deadline: .now() + 0.5) {
@@ -165,17 +159,13 @@ struct HomeView: View {
                         let cal = Calendar.current
                         let tomorrow = cal.date(byAdding: .day, value: 1, to: Date())!
                         if !cal.isDate(selectedDate, inSameDayAs: tomorrow) {
-                            slideDirection = .leading
-                            withAnimation(.easeInOut(duration: 0.3)) {
-                                selectedDate = cal.date(byAdding: .day, value: 1, to: selectedDate) ?? selectedDate
-                            }
+                            let newDate = cal.date(byAdding: .day, value: 1, to: selectedDate) ?? selectedDate
+                            navigateToDate(newDate, direction: .leading)
                         }
                     } else {
                         // Swipe right → previous day
-                        slideDirection = .trailing
-                        withAnimation(.easeInOut(duration: 0.3)) {
-                            selectedDate = Calendar.current.date(byAdding: .day, value: -1, to: selectedDate) ?? selectedDate
-                        }
+                        let newDate = Calendar.current.date(byAdding: .day, value: -1, to: selectedDate) ?? selectedDate
+                        navigateToDate(newDate, direction: .trailing)
                     }
                 }
         )
@@ -196,10 +186,8 @@ struct HomeView: View {
             }
             .onTapGesture {
                 if !isToday {
-                    slideDirection = selectedDate < Date() ? .leading : .trailing
-                    withAnimation(.easeInOut(duration: 0.3)) {
-                        selectedDate = Date()
-                    }
+                    let direction: Edge = selectedDate < Date() ? .leading : .trailing
+                    navigateToDate(Date(), direction: direction)
                 }
             }
 
@@ -225,10 +213,8 @@ struct HomeView: View {
                 // Date navigation
                 HStack(spacing: 0) {
                     Button {
-                        slideDirection = .trailing
-                        withAnimation(.easeInOut(duration: 0.3)) {
-                            selectedDate = Calendar.current.date(byAdding: .day, value: -1, to: selectedDate) ?? selectedDate
-                        }
+                        let newDate = Calendar.current.date(byAdding: .day, value: -1, to: selectedDate) ?? selectedDate
+                        navigateToDate(newDate, direction: .trailing)
                     } label: {
                         Image(systemName: "chevron.left")
                             .font(.system(size: 13, weight: .semibold))
@@ -241,10 +227,8 @@ struct HomeView: View {
                         .frame(width: 1, height: 16)
 
                     Button {
-                        slideDirection = .leading
-                        withAnimation(.easeInOut(duration: 0.3)) {
-                            selectedDate = Calendar.current.date(byAdding: .day, value: 1, to: selectedDate) ?? selectedDate
-                        }
+                        let newDate = Calendar.current.date(byAdding: .day, value: 1, to: selectedDate) ?? selectedDate
+                        navigateToDate(newDate, direction: .leading)
                     } label: {
                         Image(systemName: "chevron.right")
                             .font(.system(size: 13, weight: .semibold))
@@ -419,6 +403,20 @@ struct HomeView: View {
             }
         }
         .padding(.top, 4)
+    }
+
+    // MARK: - Date Navigation
+    private func navigateToDate(_ newDate: Date, direction: Edge) {
+        guard let userId = authService.userId else { return }
+        slideDirection = direction
+        Task {
+            // Load data FIRST
+            await logService.loadEntries(userId: userId, date: newDate)
+            // THEN animate the date change with data already present
+            withAnimation(.easeInOut(duration: 0.3)) {
+                selectedDate = newDate
+            }
+        }
     }
 
     // MARK: - Actions
