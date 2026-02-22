@@ -1,6 +1,14 @@
 import SwiftUI
 import Combine
 
+// MARK: - Liquid Glass Modifier
+struct GlassBackgroundModifier: ViewModifier {
+    func body(content: Content) -> some View {
+        content
+            .glassEffect(.regular, in: .capsule)
+    }
+}
+
 // MARK: - Main View
 struct HomeView: View {
     @EnvironmentObject var authService: AuthService
@@ -210,7 +218,7 @@ struct HomeView: View {
                     .cornerRadius(10)
                 }
 
-                // Date navigation - liquid glass pill
+                // Date navigation - native Liquid Glass
                 HStack(spacing: 0) {
                     Button {
                         let newDate = Calendar.current.date(byAdding: .day, value: -1, to: selectedDate) ?? selectedDate
@@ -218,7 +226,7 @@ struct HomeView: View {
                     } label: {
                         Image(systemName: "chevron.left")
                             .font(.system(size: 15, weight: .medium))
-                            .foregroundColor(.white.opacity(0.85))
+                            .foregroundStyle(.white)
                             .frame(width: 44, height: 36)
                     }
 
@@ -228,32 +236,12 @@ struct HomeView: View {
                     } label: {
                         Image(systemName: "chevron.right")
                             .font(.system(size: 15, weight: .medium))
-                            .foregroundColor(isTomorrow ? .white.opacity(0.15) : .white.opacity(0.85))
+                            .foregroundStyle(isTomorrow ? .white.opacity(0.2) : .white)
                             .frame(width: 44, height: 36)
                     }
                     .disabled(isTomorrow)
                 }
-                .background(
-                    Capsule()
-                        .fill(.ultraThinMaterial)
-                        .shadow(color: .white.opacity(0.06), radius: 0, y: -0.5)
-                        .overlay(
-                            Capsule()
-                                .stroke(
-                                    LinearGradient(
-                                        colors: [
-                                            .white.opacity(0.25),
-                                            .white.opacity(0.08),
-                                            .white.opacity(0.03)
-                                        ],
-                                        startPoint: .top,
-                                        endPoint: .bottom
-                                    ),
-                                    lineWidth: 0.75
-                                )
-                        )
-                        .shadow(color: .black.opacity(0.3), radius: 8, y: 4)
-                )
+                .modifier(GlassBackgroundModifier())
             }
         }
         .padding(.top, 4)
