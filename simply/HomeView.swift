@@ -227,7 +227,7 @@ struct HomeView: View {
                 )
                 .font(mode == .grams ? .inputGrams : .inputSearch)
                 .foregroundColor(mode == .grams ? .textMuted : .textPrimary)
-                .keyboardType(mode == .grams ? .decimalPad : .default)
+                .keyboardType(.default)
                 .autocorrectionDisabled()
                 .textInputAutocapitalization(.never)
                 .focused($inputFocused)
@@ -297,7 +297,7 @@ struct HomeView: View {
         mode = .grams
         inputText = "\(Int(food.servingGrams))"
         foodService.clearSearch()
-        // Keep focus, user types grams and hits return
+        inputFocused = true
     }
 
     private func cancelPending() {
@@ -317,8 +317,10 @@ struct HomeView: View {
                     // Double enter = new meal
                     currentMealIndex += 1
                     lastWasEnter = false
+                    inputFocused = true
                 } else {
                     lastWasEnter = true
+                    inputFocused = true
                 }
             } else {
                 // Select first suggestion
