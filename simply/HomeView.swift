@@ -83,6 +83,11 @@ struct HomeView: View {
                 await logService.loadToday(userId: userId)
             }
         }
+        .onAppear {
+            DispatchQueue.main.asyncAfter(deadline: .now() + 0.5) {
+                inputFocused = true
+            }
+        }
     }
 
     // MARK: - Header
@@ -265,6 +270,7 @@ struct HomeView: View {
         pendingFood = nil
         mode = .search
         inputText = ""
+        inputFocused = true
     }
 
     private func handleSubmit() {
@@ -303,6 +309,7 @@ struct HomeView: View {
         mode = .search
         inputText = ""
         lastWasEnter = false
+        inputFocused = true
     }
 
     // MARK: - Group entries by meal_index
