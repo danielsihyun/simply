@@ -233,9 +233,17 @@ struct HomeView: View {
                 .autocorrectionDisabled()
                 .textInputAutocapitalization(.never)
                 .focused($inputFocused)
-                .onChange(of: inputText) { _, newValue in
+                .onChange(of: inputText) { oldValue, newValue in
                     if mode == .search {
                         foodService.search(query: newValue)
+
+                        // Deleting back to empty while on a pending new meal = undo
+                        if newValue.isEmpty && !oldValue.isEmpty {
+                            let latestMeal = logService.todayEntries.map(\.mealIndex).max() ?? 0
+                            if currentMealIndex > latestMeal {
+                                currentMealIndex = latestMeal
+                            }
+                        }
                     }
                 }
                 .onSubmit {
@@ -272,12 +280,15 @@ struct HomeView: View {
             .padding(.vertical, 4)
 
             // Double-enter hint
-            if mode == .search && lastWasEnter && inputText.isEmpty {
-                Text("press enter again to start a new meal")
-                    .font(.system(size: 11))
-                    .foregroundColor(.textVeryMuted)
-                    .italic()
-                    .padding(.bottom, 4)
+            if mode == .search && lastWasEnter && inputText.isEmpty && !logService.todayEntries.isEmpty {
+                let latestMeal = logService.todayEntries.map(\.mealIndex).max() ?? 0
+                if currentMealIndex <= latestMeal {
+                    Text("press enter again to start a new meal")
+                        .font(.system(size: 11))
+                        .foregroundColor(.textVeryMuted)
+                        .italic()
+                        .padding(.bottom, 4)
+                }
             }
 
             // Search suggestions dropdown
@@ -318,28 +329,35 @@ struct HomeView: View {
     private func handleSubmit() {
         if mode == .grams {
             confirmFood()
-        } else {
-            // Search mode
-            if inputText.trimmingCharacters(in: .whitespaces).isEmpty {
-                if lastWasEnter {
-                    // Double enter = new meal
-                    currentMealIndex += 1
-                    lastWasEnter = false
-                    inputFocused = true
-                    DispatchQueue.main.asyncAfter(deadline: .now() + 0.1) {
-                        inputFocused = true
-                    }
-                } else {
-                    lastWasEnter = true
-                    inputFocused = true
-                }
-            } else {
-                // Select first suggestion
-                if let first = foodService.searchResults.first {
-                    selectFood(first)
-                }
+            return
+        }
+
+        // Search mode
+        if inputText.trimmingCharacters(in: .whitespaces).isEmpty {
+            let latestMeal = logService.todayEntries.map(\.mealIndex).max() ?? 0
+            let alreadyOnNewMeal = currentMealIndex > latestMeal
+
+            if alreadyOnNewMeal || logService.todayEntries.isEmpty {
+                // Do nothing, but keep focus
+            } else if lastWasEnter {
+                // Double enter = new meal
+                currentMealIndex += 1
                 lastWasEnter = false
+            } else {
+                lastWasEnter = true
             }
+        } else {
+            // Select first suggestion
+            if let first = foodService.searchResults.first {
+                selectFood(first)
+            }
+            lastWasEnter = false
+        }
+
+        // Always keep focus
+        inputFocused = true
+        DispatchQueue.main.asyncAfter(deadline: .now() + 0.1) {
+            inputFocused = true
         }
     }
 
