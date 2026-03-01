@@ -8,10 +8,18 @@ struct SettingsView: View {
     @State private var proteinPct: Double = 30
     @State private var carbsPct: Double = 40
     @State private var fatPct: Double = 30
-    @State private var activeSlider: MacroType? = nil
     @State private var isSaving = false
+    @State private var splitMode: SplitMode = .waterfall
 
-    enum MacroType { case protein, carbs, fat }
+    enum SplitMode: String, CaseIterable {
+        case waterfall = "Waterfall"
+        case lockable = "Lock"
+    }
+
+    // Lock state for lockable mode
+    @State private var proteinLocked = false
+    @State private var carbsLocked = false
+    @State private var fatLocked = false
 
     private var calGoal: Int { Int(calText) ?? 2200 }
     private var proteinGrams: Int { Int(Double(calGoal) * proteinPct / 100.0 / 4.0) }
@@ -32,12 +40,10 @@ struct SettingsView: View {
 
                     Spacer()
 
-                    Button("Done") {
-                        save()
-                    }
-                    .font(.system(size: 15, weight: .semibold))
-                    .foregroundColor(.calBarBlue)
-                    .disabled(isSaving)
+                    Button("Done") { save() }
+                        .font(.system(size: 15, weight: .semibold))
+                        .foregroundColor(.calBarBlue)
+                        .disabled(isSaving)
                 }
                 .padding(.horizontal, 18)
                 .padding(.top, 16)
@@ -62,7 +68,7 @@ struct SettingsView: View {
 
                                 Spacer()
 
-                                Text("cal")
+                                Text("kcal")
                                     .font(.system(size: 14))
                                     .foregroundColor(.textMuted)
                             }
@@ -74,65 +80,47 @@ struct SettingsView: View {
 
                         // Macro split
                         VStack(alignment: .leading, spacing: 0) {
-                            Text("MACRO SPLIT")
-                                .font(.system(size: 11, weight: .semibold))
-                                .foregroundColor(.textMuted)
-                                .tracking(0.8)
-                                .padding(.bottom, 14)
+                            HStack {
+                                Text("MACRO SPLIT")
+                                    .font(.system(size: 11, weight: .semibold))
+                                    .foregroundColor(.textMuted)
+                                    .tracking(0.8)
+
+                                Spacer()
+
+                                // Mode toggle
+                                HStack(spacing: 0) {
+                                    ForEach(SplitMode.allCases, id: \.self) { mode in
+                                        Button {
+                                            withAnimation(.easeOut(duration: 0.2)) {
+                                                splitMode = mode
+                                            }
+                                        } label: {
+                                            Text(mode.rawValue)
+                                                .font(.system(size: 10, weight: .semibold))
+                                                .foregroundColor(splitMode == mode ? .white : .textMuted)
+                                                .padding(.horizontal, 10)
+                                                .padding(.vertical, 4)
+                                                .background(splitMode == mode ? Color.white.opacity(0.08) : Color.clear)
+                                                .cornerRadius(6)
+                                        }
+                                    }
+                                }
+                                .background(Color.white.opacity(0.03))
+                                .cornerRadius(8)
+                            }
+                            .padding(.bottom, 14)
 
                             // Stacked bar preview
-                            GeometryReader { geo in
-                                HStack(spacing: 1.5) {
-                                    RoundedRectangle(cornerRadius: 3)
-                                        .fill(Color.proteinColor.opacity(0.8))
-                                        .frame(width: max(geo.size.width * proteinPct / 100.0, 4))
-
-                                    RoundedRectangle(cornerRadius: 3)
-                                        .fill(Color.carbColor.opacity(0.8))
-                                        .frame(width: max(geo.size.width * carbsPct / 100.0, 4))
-
-                                    RoundedRectangle(cornerRadius: 3)
-                                        .fill(Color.fatColor.opacity(0.8))
-                                        .frame(width: max(geo.size.width * fatPct / 100.0, 4))
-                                }
-                                .animation(.easeOut(duration: 0.15), value: proteinPct)
-                                .animation(.easeOut(duration: 0.15), value: carbsPct)
-                                .animation(.easeOut(duration: 0.15), value: fatPct)
-                            }
-                            .frame(height: 6)
-                            .padding(.bottom, 18)
+                            stackedBar
+                                .padding(.bottom, 18)
 
                             // Sliders
-                            MacroSliderRow(
-                                label: "Protein",
-                                pct: $proteinPct,
-                                grams: proteinGrams,
-                                unit: "g  ·  4 cal/g",
-                                color: .proteinColor,
-                                onChanged: { adjustOthers(changed: .protein) }
-                            )
-
-                            macroDiv
-
-                            MacroSliderRow(
-                                label: "Carbs",
-                                pct: $carbsPct,
-                                grams: carbsGrams,
-                                unit: "g  ·  4 cal/g",
-                                color: .carbColor,
-                                onChanged: { adjustOthers(changed: .carbs) }
-                            )
-
-                            macroDiv
-
-                            MacroSliderRow(
-                                label: "Fat",
-                                pct: $fatPct,
-                                grams: fatGrams,
-                                unit: "g  ·  9 cal/g",
-                                color: .fatColor,
-                                onChanged: { adjustOthers(changed: .fat) }
-                            )
+                            if splitMode == .waterfall {
+                                waterfallSliders
+                            } else {
+                                lockableSliders
+                            }
                         }
                         .padding(.horizontal, 16)
                         .padding(.vertical, 14)
@@ -174,16 +162,201 @@ struct SettingsView: View {
         .onAppear {
             if let p = authService.profile {
                 calText = "\(p.calGoal)"
-                // Reverse-calc percentages from stored grams
                 let totalCal = Double(p.calGoal)
                 if totalCal > 0 {
                     let pCal = Double(p.proteinGoal) * 4.0
                     let cCal = Double(p.carbGoal) * 4.0
-                    let fCal = Double(p.fatGoal) * 9.0
                     proteinPct = round(pCal / totalCal * 100.0)
                     carbsPct = round(cCal / totalCal * 100.0)
                     fatPct = 100.0 - proteinPct - carbsPct
                 }
+            }
+        }
+    }
+
+    // MARK: - Stacked bar
+    private var stackedBar: some View {
+        GeometryReader { geo in
+            HStack(spacing: 1.5) {
+                RoundedRectangle(cornerRadius: 3)
+                    .fill(Color.proteinColor.opacity(0.8))
+                    .frame(width: max(geo.size.width * proteinPct / 100.0, 4))
+                RoundedRectangle(cornerRadius: 3)
+                    .fill(Color.carbColor.opacity(0.8))
+                    .frame(width: max(geo.size.width * carbsPct / 100.0, 4))
+                RoundedRectangle(cornerRadius: 3)
+                    .fill(Color.fatColor.opacity(0.8))
+                    .frame(width: max(geo.size.width * fatPct / 100.0, 4))
+            }
+            .animation(.easeOut(duration: 0.15), value: proteinPct)
+            .animation(.easeOut(duration: 0.15), value: carbsPct)
+            .animation(.easeOut(duration: 0.15), value: fatPct)
+        }
+        .frame(height: 6)
+    }
+
+    // MARK: - Waterfall mode (P → C → F auto-fills)
+    private var waterfallSliders: some View {
+        VStack(spacing: 0) {
+            MacroSliderRow(
+                label: "Protein",
+                pct: $proteinPct,
+                grams: proteinGrams,
+                color: .proteinColor,
+                locked: false,
+                onLockTap: nil,
+                onChanged: {
+                    proteinPct = min(max(round(proteinPct), 5), 90)
+                    let remaining = 100.0 - proteinPct
+                    if carbsPct > remaining - 5 {
+                        carbsPct = max(remaining - 5, 5)
+                    }
+                    fatPct = 100.0 - proteinPct - carbsPct
+                }
+            )
+
+            macroDiv
+
+            MacroSliderRow(
+                label: "Carbs",
+                pct: $carbsPct,
+                grams: carbsGrams,
+                color: .carbColor,
+                locked: false,
+                onLockTap: nil,
+                onChanged: {
+                    let maxCarbs = 100.0 - proteinPct - 5
+                    carbsPct = min(max(round(carbsPct), 5), maxCarbs)
+                    fatPct = 100.0 - proteinPct - carbsPct
+                }
+            )
+
+            macroDiv
+
+            // Fat is always the remainder
+            MacroReadonlyRow(
+                label: "Fat",
+                pct: fatPct,
+                grams: fatGrams,
+                color: .fatColor,
+                hint: "remainder"
+            )
+        }
+    }
+
+    // MARK: - Lockable mode (lock any, others adjust)
+    private var lockableSliders: some View {
+        VStack(spacing: 0) {
+            MacroSliderRow(
+                label: "Protein",
+                pct: $proteinPct,
+                grams: proteinGrams,
+                color: .proteinColor,
+                locked: proteinLocked,
+                onLockTap: { proteinLocked.toggle() },
+                onChanged: { adjustLockable(changed: .protein) }
+            )
+
+            macroDiv
+
+            MacroSliderRow(
+                label: "Carbs",
+                pct: $carbsPct,
+                grams: carbsGrams,
+                color: .carbColor,
+                locked: carbsLocked,
+                onLockTap: { carbsLocked.toggle() },
+                onChanged: { adjustLockable(changed: .carbs) }
+            )
+
+            macroDiv
+
+            MacroSliderRow(
+                label: "Fat",
+                pct: $fatPct,
+                grams: fatGrams,
+                color: .fatColor,
+                locked: fatLocked,
+                onLockTap: { fatLocked.toggle() },
+                onChanged: { adjustLockable(changed: .fat) }
+            )
+        }
+    }
+
+    enum MacroType { case protein, carbs, fat }
+
+    private func adjustLockable(changed: MacroType) {
+        let minPct: Double = 5
+
+        // Clamp the changed one
+        switch changed {
+        case .protein: proteinPct = min(max(round(proteinPct), minPct), 90)
+        case .carbs: carbsPct = min(max(round(carbsPct), minPct), 90)
+        case .fat: fatPct = min(max(round(fatPct), minPct), 90)
+        }
+
+        // Determine which are free to move
+        var free: [MacroType] = []
+        if changed != .protein && !proteinLocked { free.append(.protein) }
+        if changed != .carbs && !carbsLocked { free.append(.carbs) }
+        if changed != .fat && !fatLocked { free.append(.fat) }
+
+        let changedVal: Double = {
+            switch changed {
+            case .protein: return proteinPct
+            case .carbs: return carbsPct
+            case .fat: return fatPct
+            }
+        }()
+
+        // Locked values (excluding the one being changed)
+        var lockedTotal: Double = 0
+        if changed != .protein && proteinLocked { lockedTotal += proteinPct }
+        if changed != .carbs && carbsLocked { lockedTotal += carbsPct }
+        if changed != .fat && fatLocked { lockedTotal += fatPct }
+
+        let remainder = 100.0 - changedVal - lockedTotal
+
+        if free.count == 2 {
+            let freeTotal = free.reduce(0.0) { sum, m in
+                switch m {
+                case .protein: return sum + proteinPct
+                case .carbs: return sum + carbsPct
+                case .fat: return sum + fatPct
+                }
+            }
+            for m in free {
+                let currentVal: Double = {
+                    switch m {
+                    case .protein: return proteinPct
+                    case .carbs: return carbsPct
+                    case .fat: return fatPct
+                    }
+                }()
+                let newVal = freeTotal > 0
+                    ? max(round(remainder * currentVal / freeTotal), minPct)
+                    : max(round(remainder / 2), minPct)
+                switch m {
+                case .protein: proteinPct = newVal
+                case .carbs: carbsPct = newVal
+                case .fat: fatPct = newVal
+                }
+            }
+            // Fix rounding
+            let total = proteinPct + carbsPct + fatPct
+            if total != 100, let last = free.last {
+                switch last {
+                case .protein: proteinPct += (100.0 - total)
+                case .carbs: carbsPct += (100.0 - total)
+                case .fat: fatPct += (100.0 - total)
+                }
+            }
+        } else if free.count == 1 {
+            let newVal = max(remainder, minPct)
+            switch free[0] {
+            case .protein: proteinPct = newVal
+            case .carbs: carbsPct = newVal
+            case .fat: fatPct = newVal
             }
         }
     }
@@ -195,54 +368,10 @@ struct SettingsView: View {
             .padding(.vertical, 10)
     }
 
-    // When one slider moves, redistribute the remainder to the other two proportionally
-    private func adjustOthers(changed: MacroType) {
-        let minPct: Double = 5
-
-        switch changed {
-        case .protein:
-            proteinPct = min(max(proteinPct, minPct), 90)
-            let remainder = 100.0 - proteinPct
-            let otherTotal = carbsPct + fatPct
-            if otherTotal > 0 {
-                carbsPct = max(round(remainder * carbsPct / otherTotal), minPct)
-                fatPct = max(100.0 - proteinPct - carbsPct, minPct)
-            } else {
-                carbsPct = remainder / 2
-                fatPct = remainder / 2
-            }
-        case .carbs:
-            carbsPct = min(max(carbsPct, minPct), 90)
-            let remainder = 100.0 - carbsPct
-            let otherTotal = proteinPct + fatPct
-            if otherTotal > 0 {
-                proteinPct = max(round(remainder * proteinPct / otherTotal), minPct)
-                fatPct = max(100.0 - carbsPct - proteinPct, minPct)
-            } else {
-                proteinPct = remainder / 2
-                fatPct = remainder / 2
-            }
-        case .fat:
-            fatPct = min(max(fatPct, minPct), 90)
-            let remainder = 100.0 - fatPct
-            let otherTotal = proteinPct + carbsPct
-            if otherTotal > 0 {
-                proteinPct = max(round(remainder * proteinPct / otherTotal), minPct)
-                carbsPct = max(100.0 - fatPct - proteinPct, minPct)
-            } else {
-                proteinPct = remainder / 2
-                carbsPct = remainder / 2
-            }
-        }
-
-        // Clamp to ensure exactly 100
-        let total = proteinPct + carbsPct + fatPct
-        if total != 100 {
-            fatPct += (100.0 - total)
-        }
-    }
-
     private func save() {
+        let total = proteinPct + carbsPct + fatPct
+        if total != 100 { fatPct += (100.0 - total) }
+
         isSaving = true
         Task {
             await authService.updateGoals(
@@ -262,13 +391,23 @@ struct MacroSliderRow: View {
     let label: String
     @Binding var pct: Double
     let grams: Int
-    let unit: String
     let color: Color
+    let locked: Bool
+    let onLockTap: (() -> Void)?
     let onChanged: () -> Void
 
     var body: some View {
         VStack(spacing: 8) {
             HStack {
+                if let onLockTap {
+                    Button(action: onLockTap) {
+                        Image(systemName: locked ? "lock.fill" : "lock.open")
+                            .font(.system(size: 10, weight: .medium))
+                            .foregroundColor(locked ? color.opacity(0.8) : .white.opacity(0.15))
+                            .frame(width: 20, height: 20)
+                    }
+                }
+
                 Text(label)
                     .font(.system(size: 15))
                     .foregroundColor(.textPrimary)
@@ -279,34 +418,27 @@ struct MacroSliderRow: View {
                     Text("\(Int(pct))%")
                         .font(.system(size: 14, weight: .semibold, design: .monospaced))
                         .foregroundColor(color)
-
                     Text("·")
                         .font(.system(size: 12))
                         .foregroundColor(.white.opacity(0.1))
-
-                    Text("\(grams)")
-                        .font(.system(size: 14, weight: .medium, design: .monospaced))
+                    Text("\(grams)g")
+                        .font(.system(size: 13, weight: .medium, design: .monospaced))
                         .foregroundColor(.white.opacity(0.5))
-
-                    Text(unit)
-                        .font(.system(size: 10))
-                        .foregroundColor(.textMuted)
                 }
             }
 
-            // Custom slider
             GeometryReader { geo in
                 ZStack(alignment: .leading) {
                     Capsule()
                         .fill(Color.white.opacity(0.06))
-
                     Capsule()
-                        .fill(color.opacity(0.5))
+                        .fill(locked ? color.opacity(0.25) : color.opacity(0.5))
                         .frame(width: geo.size.width * pct / 100.0)
                 }
                 .frame(height: 4)
-                .contentShape(Rectangle().size(width: geo.size.width, height: 40))
+                .contentShape(Rectangle())
                 .gesture(
+                    locked ? nil :
                     DragGesture(minimumDistance: 0)
                         .onChanged { value in
                             let newPct = Double(value.location.x / geo.size.width) * 100.0
@@ -314,6 +446,57 @@ struct MacroSliderRow: View {
                             onChanged()
                         }
                 )
+            }
+            .frame(height: 4)
+        }
+        .opacity(locked ? 0.7 : 1.0)
+    }
+}
+
+// MARK: - Macro Readonly Row (for waterfall remainder)
+struct MacroReadonlyRow: View {
+    let label: String
+    let pct: Double
+    let grams: Int
+    let color: Color
+    let hint: String
+
+    var body: some View {
+        VStack(spacing: 8) {
+            HStack {
+                Text(label)
+                    .font(.system(size: 15))
+                    .foregroundColor(.textPrimary)
+
+                Text(hint)
+                    .font(.system(size: 10, weight: .medium))
+                    .foregroundColor(.white.opacity(0.12))
+                    .italic()
+
+                Spacer()
+
+                HStack(spacing: 3) {
+                    Text("\(Int(pct))%")
+                        .font(.system(size: 14, weight: .semibold, design: .monospaced))
+                        .foregroundColor(color)
+                    Text("·")
+                        .font(.system(size: 12))
+                        .foregroundColor(.white.opacity(0.1))
+                    Text("\(grams)g")
+                        .font(.system(size: 13, weight: .medium, design: .monospaced))
+                        .foregroundColor(.white.opacity(0.5))
+                }
+            }
+
+            GeometryReader { geo in
+                ZStack(alignment: .leading) {
+                    Capsule()
+                        .fill(Color.white.opacity(0.06))
+                    Capsule()
+                        .fill(color.opacity(0.35))
+                        .frame(width: geo.size.width * pct / 100.0)
+                        .animation(.easeOut(duration: 0.15), value: pct)
+                }
             }
             .frame(height: 4)
         }
