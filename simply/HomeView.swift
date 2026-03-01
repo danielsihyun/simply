@@ -46,6 +46,20 @@ struct DateNavButtons: View {
     }
 }
 
+// MARK: - Settings Button (standalone Liquid Glass)
+struct SettingsButton: View {
+    let action: () -> Void
+
+    var body: some View {
+        Button(action: action) {
+            Image(systemName: "gearshape")
+                .font(.system(size: 14, weight: .medium))
+                .frame(width: 30, height: 30)
+        }
+        .buttonStyle(.glass)
+    }
+}
+
 // MARK: - Main View
 struct HomeView: View {
     @EnvironmentObject var authService: AuthService
@@ -61,6 +75,7 @@ struct HomeView: View {
     @State private var selectedDate = Date()
     @State private var slideDirection: Edge = .trailing
     @State private var dateNavAction = DateNavAction()
+    @State private var showSettings = false
     @FocusState private var inputFocused: Bool
 
     enum InputMode { case search, grams }
@@ -193,6 +208,10 @@ struct HomeView: View {
                 inputFocused = true
             }
         }
+        .sheet(isPresented: $showSettings) {
+            SettingsView()
+                .environmentObject(authService)
+        }
         .simultaneousGesture(
             DragGesture(minimumDistance: 50, coordinateSpace: .local)
                 .onEnded { value in
@@ -240,7 +259,7 @@ struct HomeView: View {
 
             Spacer()
 
-            // Date nav + streak
+            // Date nav + settings + streak
             HStack(spacing: 8) {
                 // Streak badge
                 if let profile = authService.profile, profile.streakCurrent > 0 {
@@ -258,6 +277,10 @@ struct HomeView: View {
                 }
 
                 DateNavButtons(actions: dateNavAction)
+
+                SettingsButton {
+                    showSettings = true
+                }
             }
         }
         .padding(.top, 4)

@@ -1,12 +1,27 @@
 import SwiftUI
+import Combine
 import AuthenticationServices
 import Supabase
-import Combine
 
 enum AuthState {
     case loading
     case signedOut
     case signedIn
+}
+
+// MARK: - Goals Update DTO
+struct GoalsUpdate: Encodable {
+    let calGoal: Int
+    let proteinGoal: Int
+    let carbGoal: Int
+    let fatGoal: Int
+
+    enum CodingKeys: String, CodingKey {
+        case calGoal = "cal_goal"
+        case proteinGoal = "protein_goal"
+        case carbGoal = "carb_goal"
+        case fatGoal = "fat_goal"
+    }
 }
 
 final class AuthService: ObservableObject {
@@ -74,6 +89,24 @@ final class AuthService: ObservableObject {
             self.profile = profile
         } catch {
             print("Load profile error: \(error)")
+        }
+    }
+
+    // MARK: - Update profile goals
+    @MainActor
+    func updateGoals(cal: Int, protein: Int, carbs: Int, fat: Int) async {
+        guard let userId else { return }
+        let update = GoalsUpdate(calGoal: cal, proteinGoal: protein, carbGoal: carbs, fatGoal: fat)
+        do {
+            _ = try await supabase
+                .from("profiles")
+                .update(update)
+                .eq("id", value: userId.uuidString)
+                .execute()
+
+            await loadProfile()
+        } catch {
+            print("Update goals error: \(error)")
         }
     }
 
