@@ -36,44 +36,53 @@ struct SettingsView: View {
                 .padding(.bottom, 24)
 
                 ScrollView {
-                    VStack(alignment: .leading, spacing: 24) {
+                    VStack(alignment: .leading, spacing: 16) {
                         // Daily Goals section
-                        VStack(alignment: .leading, spacing: 14) {
-                            Text("Daily Goals")
-                                .font(.system(size: 13, weight: .semibold))
+                        VStack(alignment: .leading, spacing: 0) {
+                            Text("DAILY GOALS")
+                                .font(.system(size: 11, weight: .semibold))
                                 .foregroundColor(.textMuted)
-                                .textCase(.uppercase)
                                 .tracking(0.8)
+                                .padding(.bottom, 12)
 
                             GoalRow(label: "Calories", unit: "kcal", text: $calText, color: .white)
+                            divider
                             GoalRow(label: "Protein", unit: "g", text: $proteinText, color: .proteinColor)
+                            divider
                             GoalRow(label: "Carbs", unit: "g", text: $carbsText, color: .carbColor)
+                            divider
                             GoalRow(label: "Fat", unit: "g", text: $fatText, color: .fatColor)
                         }
-                        .padding(.horizontal, 14)
+                        .padding(.horizontal, 16)
                         .padding(.vertical, 14)
                         .background(Color.bgCard)
                         .cornerRadius(14)
 
                         // Account section
-                        VStack(alignment: .leading, spacing: 14) {
-                            Text("Account")
-                                .font(.system(size: 13, weight: .semibold))
+                        VStack(alignment: .leading, spacing: 0) {
+                            Text("ACCOUNT")
+                                .font(.system(size: 11, weight: .semibold))
                                 .foregroundColor(.textMuted)
-                                .textCase(.uppercase)
                                 .tracking(0.8)
+                                .padding(.bottom, 12)
 
                             Button {
                                 Task {
                                     await authService.signOut()
                                 }
                             } label: {
-                                Text("Sign Out")
-                                    .font(.system(size: 15))
-                                    .foregroundColor(.red.opacity(0.8))
+                                HStack {
+                                    Text("Sign Out")
+                                        .font(.system(size: 15))
+                                        .foregroundColor(.red.opacity(0.8))
+                                    Spacer()
+                                    Image(systemName: "arrow.right.square")
+                                        .font(.system(size: 14))
+                                        .foregroundColor(.red.opacity(0.4))
+                                }
                             }
                         }
-                        .padding(.horizontal, 14)
+                        .padding(.horizontal, 16)
                         .padding(.vertical, 14)
                         .background(Color.bgCard)
                         .cornerRadius(14)
@@ -90,6 +99,13 @@ struct SettingsView: View {
                 fatText = "\(p.fatGoal)"
             }
         }
+    }
+
+    private var divider: some View {
+        Rectangle()
+            .fill(Color.white.opacity(0.04))
+            .frame(height: 1)
+            .padding(.vertical, 6)
     }
 
     private func save() {
