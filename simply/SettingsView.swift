@@ -45,7 +45,7 @@ struct SettingsView: View {
                                 .tracking(0.8)
                                 .padding(.bottom, 12)
 
-                            GoalRow(label: "Calories", unit: "kcal", text: $calText, color: .white)
+                            GoalRow(label: "Calories", unit: "cal", text: $calText, color: .white)
                             divider
                             GoalRow(label: "Protein", unit: "g", text: $proteinText, color: .proteinColor)
                             divider
