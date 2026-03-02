@@ -735,28 +735,16 @@ struct HomeView: View {
     private func confirmCustomFood(fat: Float) {
         guard let userId = authService.userId else { return }
 
-        Task {
-            // Create food in DB (visible to all users in search)
-            if let food = await foodService.createCustomFood(
-                name: customFoodName,
-                servingGrams: customServing,
-                calories: customCals,
-                protein: customProtein,
-                carbs: customCarbs,
-                fat: fat
-            ) {
-                // Log it
-                await logService.addEntry(
-                    userId: userId,
-                    food: food,
-                    grams: customServing,
-                    mealIndex: currentMealIndex,
-                    date: selectedDate
-                )
-            }
-        }
+        // Capture values before resetting state
+        let name = customFoodName
+        let serving = customServing
+        let cals = customCals
+        let protein = customProtein
+        let carbs = customCarbs
+        let meal = currentMealIndex
+        let date = selectedDate
 
-        // Reset
+        // Reset immediately so UI is responsive
         mode = .search
         customFoodName = ""
         customStep = .serving
@@ -764,6 +752,25 @@ struct HomeView: View {
         inputText = ""
         lastWasEnter = false
         inputFocused = true
+
+        Task {
+            if let food = await foodService.createCustomFood(
+                name: name,
+                servingGrams: serving,
+                calories: cals,
+                protein: protein,
+                carbs: carbs,
+                fat: fat
+            ) {
+                await logService.addEntry(
+                    userId: userId,
+                    food: food,
+                    grams: serving,
+                    mealIndex: meal,
+                    date: date
+                )
+            }
+        }
     }
 
     // MARK: - Group entries by meal_index
