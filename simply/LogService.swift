@@ -2,6 +2,17 @@ import Foundation
 import Combine
 import Supabase
 
+// MARK: - Order Update DTO
+struct OrderUpdate: Encodable {
+    let mealIndex: Int
+    let sortOrder: Int
+
+    enum CodingKeys: String, CodingKey {
+        case mealIndex = "meal_index"
+        case sortOrder = "sort_order"
+    }
+}
+
 final class LogService: ObservableObject {
     @Published var todayEntries: [FoodLogEntry] = []
     @Published var summary: DailySummary?
@@ -117,18 +128,18 @@ final class LogService: ObservableObject {
 
     // MARK: - Quick add (manual macros, no food reference)
     @MainActor
-    func quickAdd(userId: UUID, name: String, calories: Float, protein: Float, carbs: Float, fat: Float) async {
+    func quickAdd(userId: UUID, name: String, calories: Float, protein: Float, carbs: Float, fat: Float, grams: Float = 0, mealIndex: Int = 0, date: Date = Date()) async {
         let nextSort = (todayEntries.last?.sortOrder ?? -1) + 1
 
         let insert = FoodLogInsert(
             userId: userId,
-            logDate: today,
-            mealIndex: 0,
+            logDate: dateString(for: date),
+            mealIndex: mealIndex,
             sortOrder: nextSort,
             foodId: nil,
             customFoodId: nil,
             foodName: name,
-            grams: 0,
+            grams: grams,
             calories: calories,
             protein: protein,
             carbs: carbs,
@@ -147,6 +158,24 @@ final class LogService: ObservableObject {
             todayEntries.append(entry)
         } catch {
             print("Quick add error: \(error)")
+        }
+    }
+
+    // MARK: - Batch update positions (for drag-and-drop reordering)
+    @MainActor
+    func updatePositions(_ entries: [FoodLogEntry]) async {
+        for entry in entries {
+            guard let id = entry.id else { continue }
+            let update = OrderUpdate(mealIndex: entry.mealIndex, sortOrder: entry.sortOrder)
+            do {
+                _ = try await supabase
+                    .from("food_log")
+                    .update(update)
+                    .eq("id", value: id.uuidString)
+                    .execute()
+            } catch {
+                print("Update position error for \(id): \(error)")
+            }
         }
     }
 

@@ -736,7 +736,7 @@ struct HomeView: View {
         guard let userId = authService.userId else { return }
 
         Task {
-            // Create the food in the database
+            // Create food in DB (visible to all users in search)
             if let food = await foodService.createCustomFood(
                 name: customFoodName,
                 servingGrams: customServing,
@@ -745,7 +745,7 @@ struct HomeView: View {
                 carbs: customCarbs,
                 fat: fat
             ) {
-                // Log it immediately
+                // Log it
                 await logService.addEntry(
                     userId: userId,
                     food: food,
