@@ -1,5 +1,7 @@
 import SwiftUI
 import Combine
+import UniformTypeIdentifiers
+import UniformTypeIdentifiers
 
 // MARK: - Date Nav Action Holder (reference type — prevents SwiftUI re-renders)
 class DateNavAction {
@@ -60,6 +62,80 @@ struct SettingsButton: View {
     }
 }
 
+// MARK: - Drop Delegate for entry reordering
+struct EntryDropDelegate: DropDelegate {
+    let targetEntry: FoodLogEntry
+    @Binding var entries: [FoodLogEntry]
+    @Binding var draggedEntry: FoodLogEntry?
+    let onCommit: () -> Void
+
+    func dropEntered(info: DropInfo) {
+        guard let dragged = draggedEntry,
+              dragged.id != targetEntry.id,
+              let fromIndex = entries.firstIndex(where: { $0.id == dragged.id }),
+              let toIndex = entries.firstIndex(where: { $0.id == targetEntry.id })
+        else { return }
+
+        withAnimation(.easeInOut(duration: 0.15)) {
+            // Adopt the target's meal when crossing boundaries
+            entries[fromIndex].mealIndex = entries[toIndex].mealIndex
+            entries.move(
+                fromOffsets: IndexSet(integer: fromIndex),
+                toOffset: toIndex > fromIndex ? toIndex + 1 : toIndex
+            )
+        }
+    }
+
+    func performDrop(info: DropInfo) -> Bool {
+        onCommit()
+        return true
+    }
+
+    func dropUpdated(info: DropInfo) -> DropProposal? {
+        DropProposal(operation: .move)
+    }
+}
+
+// MARK: - Drop Delegate for meal headers (drop onto a meal)
+struct MealHeaderDropDelegate: DropDelegate {
+    let targetMealIndex: Int
+    @Binding var entries: [FoodLogEntry]
+    @Binding var draggedEntry: FoodLogEntry?
+    let onCommit: () -> Void
+
+    func dropEntered(info: DropInfo) {
+        guard let dragged = draggedEntry,
+              let fromIndex = entries.firstIndex(where: { $0.id == dragged.id })
+        else { return }
+
+        // Move entry to end of target meal
+        withAnimation(.easeInOut(duration: 0.15)) {
+            entries[fromIndex].mealIndex = targetMealIndex
+
+            // Find last entry in target meal
+            let lastInMeal = entries.lastIndex(where: { $0.mealIndex == targetMealIndex && $0.id != dragged.id })
+            let entry = entries.remove(at: fromIndex)
+            if let insertAfter = lastInMeal {
+                let adjustedIndex = min(insertAfter + 1, entries.count)
+                entries.insert(entry, at: adjustedIndex)
+            } else {
+                // No entries in this meal yet — find the right position
+                let insertIndex = entries.firstIndex(where: { $0.mealIndex > targetMealIndex }) ?? entries.count
+                entries.insert(entry, at: insertIndex)
+            }
+        }
+    }
+
+    func performDrop(info: DropInfo) -> Bool {
+        onCommit()
+        return true
+    }
+
+    func dropUpdated(info: DropInfo) -> DropProposal? {
+        DropProposal(operation: .move)
+    }
+}
+
 // MARK: - Main View
 struct HomeView: View {
     @EnvironmentObject var authService: AuthService
@@ -76,9 +152,44 @@ struct HomeView: View {
     @State private var slideDirection: Edge = .trailing
     @State private var dateNavAction = DateNavAction()
     @State private var showSettings = false
+    @State private var draggedEntry: FoodLogEntry?
+    @State private var customFoodName = ""
+    @State private var customStep: CustomStep = .serving
+    @State private var customServing: Float = 100
+    @State private var customCals: Float = 0
+    @State private var customProtein: Float = 0
+    @State private var customCarbs: Float = 0
     @FocusState private var inputFocused: Bool
 
-    enum InputMode { case search, grams }
+    enum InputMode { case search, grams, custom }
+
+    enum CustomStep: Int, CaseIterable {
+        case serving, calories, protein, carbs, fat
+
+        var prompt: String {
+            switch self {
+            case .serving: return "serving size in grams"
+            case .calories: return "calories per serving"
+            case .protein: return "protein (g)"
+            case .carbs: return "carbs (g)"
+            case .fat: return "fat (g)"
+            }
+        }
+
+        var label: String {
+            switch self {
+            case .serving: return "Serving"
+            case .calories: return "Cal"
+            case .protein: return "Protein"
+            case .carbs: return "Carbs"
+            case .fat: return "Fat"
+            }
+        }
+
+        var next: CustomStep? {
+            CustomStep(rawValue: rawValue + 1)
+        }
+    }
 
     private var isToday: Bool {
         Calendar.current.isDateInToday(selectedDate)
@@ -140,7 +251,7 @@ struct HomeView: View {
                                 )
                                 .padding(.bottom, 24)
 
-                                // Food entries (notepad)
+                                // Food entries (notepad) — drag-and-drop enabled
                                 mealEntriesView
 
                                 // New meal divider - shows after double-enter
@@ -185,6 +296,11 @@ struct HomeView: View {
                         .clipped()
                     }
                     .scrollDismissesKeyboard(.interactively)
+                    .onDrop(of: [UTType.text], isTargeted: nil) { _ in
+                        // Last resort: clear drag state if dropped on empty scroll area
+                        draggedEntry = nil
+                        return true
+                    }
                 }
             }
         }
@@ -192,7 +308,6 @@ struct HomeView: View {
             inputFocused = true
         }
         .task {
-            // Wire up navigation callback
             dateNavAction.onNavigate = { [self] newDate, direction in
                 navigateToDate(newDate, direction: direction)
             }
@@ -215,13 +330,14 @@ struct HomeView: View {
         .simultaneousGesture(
             DragGesture(minimumDistance: 50, coordinateSpace: .local)
                 .onEnded { value in
+                    // Don't swipe while dragging an entry
+                    guard draggedEntry == nil else { return }
+
                     let horizontal = value.translation.width
                     let vertical = value.translation.height
-                    // Only trigger if clearly horizontal
                     guard abs(horizontal) > abs(vertical) * 2 else { return }
 
                     if horizontal < 0 {
-                        // Swipe left → next day
                         let cal = Calendar.current
                         let tomorrow = cal.date(byAdding: .day, value: 1, to: Date())!
                         if !cal.isDate(selectedDate, inSameDayAs: tomorrow) {
@@ -229,7 +345,6 @@ struct HomeView: View {
                             navigateToDate(newDate, direction: .leading)
                         }
                     } else {
-                        // Swipe right → previous day
                         let newDate = Calendar.current.date(byAdding: .day, value: -1, to: selectedDate) ?? selectedDate
                         navigateToDate(newDate, direction: .trailing)
                     }
@@ -259,9 +374,7 @@ struct HomeView: View {
 
             Spacer()
 
-            // Date nav + settings + streak
             HStack(spacing: 8) {
-                // Streak badge
                 if let profile = authService.profile, profile.streakCurrent > 0 {
                     HStack(spacing: 2) {
                         Text("🔥")
@@ -287,12 +400,12 @@ struct HomeView: View {
         .padding(.bottom, 16)
     }
 
-    // MARK: - Meal entries (notepad style)
+    // MARK: - Meal entries (drag-and-drop enabled)
     private var mealEntriesView: some View {
         let groups = groupedEntries()
         return ForEach(Array(groups.enumerated()), id: \.offset) { mealIdx, group in
             VStack(alignment: .leading, spacing: 0) {
-                // Meal header
+                // Meal header — also a drop target
                 HStack {
                     Text("Meal \(mealIdx + 1)")
                         .font(.labelMealHeader)
@@ -303,19 +416,36 @@ struct HomeView: View {
                     Spacer()
 
                     let mealCal = group.reduce(0) { $0 + $1.calories }
-                    Text("\(Int(mealCal)) cal")
+                    Text("\(Int(mealCal)) kcal")
                         .font(.monoTiny)
                         .foregroundColor(.textVeryMuted)
                 }
                 .padding(.bottom, 2)
+                .contentShape(Rectangle())
+                .onDrop(of: [UTType.text], delegate: MealHeaderDropDelegate(
+                    targetMealIndex: group.first?.mealIndex ?? mealIdx,
+                    entries: $logService.todayEntries,
+                    draggedEntry: $draggedEntry,
+                    onCommit: commitReorder
+                ))
 
-                // Food items
+                // Food items — draggable
                 ForEach(group) { entry in
-                    FoodEntryRow(entry: entry) {
+                    FoodEntryRow(entry: entry, isDragging: draggedEntry?.id == entry.id) {
                         Task {
                             await logService.deleteEntry(entry)
                         }
                     }
+                    .onDrag {
+                        draggedEntry = entry
+                        return NSItemProvider(object: (entry.id?.uuidString ?? "") as NSString)
+                    }
+                    .onDrop(of: [UTType.text], delegate: EntryDropDelegate(
+                        targetEntry: entry,
+                        entries: $logService.todayEntries,
+                        draggedEntry: $draggedEntry,
+                        onCommit: commitReorder
+                    ))
                 }
 
                 // Divider between meals
@@ -331,10 +461,29 @@ struct HomeView: View {
         }
     }
 
+    // MARK: - Commit reorder after drag
+    private func commitReorder() {
+        // Recalculate sortOrder within each meal group
+        var mealCounters: [Int: Int] = [:]
+        for i in 0..<logService.todayEntries.count {
+            let mealIdx = logService.todayEntries[i].mealIndex
+            let order = mealCounters[mealIdx, default: 0]
+            logService.todayEntries[i].sortOrder = order
+            mealCounters[mealIdx] = order + 1
+        }
+
+        // Persist to Supabase
+        Task {
+            await logService.updatePositions(logService.todayEntries)
+        }
+
+        draggedEntry = nil
+    }
+
     // MARK: - Input area
     private var inputAreaView: some View {
         VStack(alignment: .leading, spacing: 0) {
-            // Pending food label (grams mode)
+            // Context label above input
             if mode == .grams, let food = pendingFood {
                 HStack {
                     Text(food.name.capitalized)
@@ -352,27 +501,73 @@ struct HomeView: View {
                 .padding(.bottom, 2)
             }
 
+            if mode == .custom {
+                HStack {
+                    Text(customFoodName.capitalized)
+                        .font(.system(size: 14))
+                        .foregroundColor(.white.opacity(0.7))
+
+                    Text("· custom")
+                        .font(.system(size: 11))
+                        .foregroundColor(.white.opacity(0.12))
+                        .italic()
+
+                    Spacer()
+
+                    Button("cancel") {
+                        cancelCustom()
+                    }
+                    .font(.system(size: 11))
+                    .foregroundColor(.textMuted)
+                }
+                .padding(.bottom, 4)
+
+                // Step progress dots
+                HStack(spacing: 6) {
+                    ForEach(CustomStep.allCases, id: \.rawValue) { step in
+                        HStack(spacing: 3) {
+                            Circle()
+                                .fill(step.rawValue < customStep.rawValue
+                                    ? Color.calBarBlue.opacity(0.8)
+                                    : step == customStep
+                                        ? Color.white.opacity(0.5)
+                                        : Color.white.opacity(0.1))
+                                .frame(width: 5, height: 5)
+
+                            if step == customStep {
+                                Text(step.label)
+                                    .font(.system(size: 10, weight: .medium))
+                                    .foregroundColor(.white.opacity(0.4))
+                            }
+                        }
+                    }
+                    Spacer()
+
+                    // Running preview of entered values
+                    if customStep.rawValue > 0 {
+                        customPreviewText
+                    }
+                }
+                .padding(.bottom, 4)
+            }
+
             // Input row
             HStack(spacing: 10) {
                 TextField(
-                    mode == .grams
-                        ? "\(Int(pendingFood?.servingGrams ?? 100))"
-                        : logService.todayEntries.isEmpty
-                            ? "start typing to log food..."
-                            : "add more...",
+                    currentPlaceholder,
                     text: $inputText
                 )
-                .font(mode == .grams ? .inputGrams : .inputSearch)
-                .foregroundColor(mode == .grams ? .textMuted : .textPrimary)
-                .keyboardType(.default)
+                .font(mode == .search ? .inputSearch : .inputGrams)
+                .foregroundColor(mode == .search ? .textPrimary : .textMuted)
+                .keyboardType(mode == .custom ? .decimalPad : .default)
                 .autocorrectionDisabled()
                 .textInputAutocapitalization(.never)
                 .focused($inputFocused)
+                .allowsHitTesting(draggedEntry == nil)
                 .onChange(of: inputText) { oldValue, newValue in
                     if mode == .search {
                         foodService.search(query: newValue)
 
-                        // Deleting back to empty while on a pending new meal = undo
                         if newValue.isEmpty && !oldValue.isEmpty && !suppressUndo {
                             let latestMeal = logService.todayEntries.map(\.mealIndex).max() ?? 0
                             if currentMealIndex > latestMeal {
@@ -413,6 +608,12 @@ struct HomeView: View {
                         }
                     }
                 }
+
+                if mode == .custom {
+                    Text(customStep == .serving ? "g" : customStep == .calories ? "cal" : "g")
+                        .font(.system(size: 11))
+                        .foregroundColor(.textMuted)
+                }
             }
             .padding(.vertical, 4)
 
@@ -428,17 +629,91 @@ struct HomeView: View {
                 }
             }
 
-            // Search suggestions dropdown
-            if mode == .search && !inputText.isEmpty && !foodService.searchResults.isEmpty {
-                SuggestionDropdown(
-                    suggestions: foodService.searchResults,
-                    onSelect: { food in
-                        selectFood(food)
+            // Search suggestions or "add custom" option
+            if mode == .search && !inputText.isEmpty {
+                if !foodService.searchResults.isEmpty {
+                    SuggestionDropdown(
+                        suggestions: foodService.searchResults,
+                        onSelect: { food in
+                            selectFood(food)
+                        }
+                    )
+                } else if !foodService.isSearching && inputText.trimmingCharacters(in: .whitespaces).count >= 2 {
+                    // No results — offer custom food creation
+                    Button {
+                        startCustomFood()
+                    } label: {
+                        HStack {
+                            Image(systemName: "plus.circle.fill")
+                                .font(.system(size: 14))
+                                .foregroundColor(.calBarBlue.opacity(0.6))
+
+                            Text("Add \"\(inputText.trimmingCharacters(in: .whitespaces))\" as custom food")
+                                .font(.system(size: 14))
+                                .foregroundColor(.textPrimary)
+
+                            Spacer()
+
+                            Text("enter ↵")
+                                .font(.system(size: 10, weight: .medium))
+                                .foregroundColor(.textVeryMuted)
+                        }
+                        .padding(.horizontal, 16)
+                        .padding(.vertical, 12)
                     }
-                )
+                    .background(Color.bgDropdown)
+                    .cornerRadius(12)
+                    .overlay(
+                        RoundedRectangle(cornerRadius: 12)
+                            .stroke(Color.calBarBlue.opacity(0.12), lineWidth: 1)
+                    )
+                }
             }
         }
         .padding(.top, 4)
+        .onDrop(of: [UTType.text], isTargeted: nil) { _ in
+            // Consume drop to prevent TextField from inserting UUID text
+            draggedEntry = nil
+            return true
+        }
+    }
+
+    // Dynamic placeholder
+    private var currentPlaceholder: String {
+        switch mode {
+        case .search:
+            return logService.todayEntries.isEmpty ? "start typing to log food..." : "add more..."
+        case .grams:
+            return "\(Int(pendingFood?.servingGrams ?? 100))"
+        case .custom:
+            return customStep.prompt
+        }
+    }
+
+    // Running preview of entered custom values
+    private var customPreviewText: some View {
+        HStack(spacing: 6) {
+            if customStep.rawValue > 0 {
+                Text("\(Int(customServing))g")
+                    .font(.monoTiny)
+                    .foregroundColor(.textMuted)
+            }
+            if customStep.rawValue > 1 {
+                Text("\(Int(customCals))")
+                    .font(.monoTiny)
+                    .foregroundColor(.white.opacity(0.4))
+            }
+            if customStep.rawValue > 2 {
+                Text("\(Int(customProtein))p")
+                    .font(.monoTiny)
+                    .foregroundColor(.proteinColor)
+            }
+            if customStep.rawValue > 3 {
+                Text("\(Int(customCarbs))c")
+                    .font(.monoTiny)
+                    .foregroundColor(.carbColor)
+            }
+        }
     }
 
     // MARK: - Date Navigation
@@ -447,10 +722,11 @@ struct HomeView: View {
         slideDirection = direction
         dateNavAction.selectedDate = newDate
 
-        // Reset input state immediately
         inputText = ""
         mode = .search
         pendingFood = nil
+        customFoodName = ""
+        customStep = .serving
         lastWasEnter = false
         suppressUndo = true
 
@@ -485,29 +761,34 @@ struct HomeView: View {
             return
         }
 
+        if mode == .custom {
+            advanceCustomStep()
+            return
+        }
+
         // Search mode
         if inputText.trimmingCharacters(in: .whitespaces).isEmpty {
             let latestMeal = logService.todayEntries.map(\.mealIndex).max() ?? 0
             let alreadyOnNewMeal = currentMealIndex > latestMeal
 
             if alreadyOnNewMeal || logService.todayEntries.isEmpty {
-                // Do nothing, but keep focus
+                // Do nothing
             } else if lastWasEnter {
-                // Double enter = new meal
                 currentMealIndex += 1
                 lastWasEnter = false
             } else {
                 lastWasEnter = true
             }
         } else {
-            // Select first suggestion
             if let first = foodService.searchResults.first {
                 selectFood(first)
+            } else if !foodService.isSearching && inputText.trimmingCharacters(in: .whitespaces).count >= 2 {
+                // No results — enter triggers custom food flow
+                startCustomFood()
             }
             lastWasEnter = false
         }
 
-        // Always keep focus
         inputFocused = true
     }
 
@@ -523,6 +804,88 @@ struct HomeView: View {
 
         pendingFood = nil
         mode = .search
+        suppressUndo = true
+        inputText = ""
+        lastWasEnter = false
+        inputFocused = true
+    }
+
+    // MARK: - Custom food flow
+    private func startCustomFood() {
+        customFoodName = inputText.trimmingCharacters(in: .whitespaces)
+        customStep = .serving
+        customServing = 100
+        customCals = 0
+        customProtein = 0
+        customCarbs = 0
+        mode = .custom
+        suppressUndo = true
+        inputText = ""
+        foodService.clearSearch()
+        inputFocused = true
+    }
+
+    private func cancelCustom() {
+        mode = .search
+        customFoodName = ""
+        customStep = .serving
+        suppressUndo = true
+        inputText = ""
+        inputFocused = true
+    }
+
+    private func advanceCustomStep() {
+        let value = Float(inputText) ?? 0
+
+        // Store value for current step
+        switch customStep {
+        case .serving: customServing = max(value, 1)
+        case .calories: customCals = value
+        case .protein: customProtein = value
+        case .carbs: customCarbs = value
+        case .fat:
+            // Final step — create the food and log it
+            let fatValue = value
+            confirmCustomFood(fat: fatValue)
+            return
+        }
+
+        // Advance to next step
+        if let next = customStep.next {
+            customStep = next
+            inputText = ""
+            inputFocused = true
+        }
+    }
+
+    private func confirmCustomFood(fat: Float) {
+        guard let userId = authService.userId else { return }
+
+        Task {
+            // Create the food in the database
+            if let food = await foodService.createCustomFood(
+                name: customFoodName,
+                servingGrams: customServing,
+                calories: customCals,
+                protein: customProtein,
+                carbs: customCarbs,
+                fat: fat
+            ) {
+                // Log it immediately
+                await logService.addEntry(
+                    userId: userId,
+                    food: food,
+                    grams: customServing,
+                    mealIndex: currentMealIndex,
+                    date: selectedDate
+                )
+            }
+        }
+
+        // Reset
+        mode = .search
+        customFoodName = ""
+        customStep = .serving
         suppressUndo = true
         inputText = ""
         lastWasEnter = false
@@ -566,7 +929,6 @@ struct DaySummaryView: View {
 
     var body: some View {
         VStack(spacing: 0) {
-            // Calorie header
             HStack(alignment: .firstTextBaseline) {
                 HStack(alignment: .firstTextBaseline, spacing: 0) {
                     Text("\(Int(cal))")
@@ -576,17 +938,14 @@ struct DaySummaryView: View {
                         .font(.system(size: 13, design: .monospaced))
                         .foregroundColor(.textMuted)
                 }
-
                 Spacer()
             }
             .padding(.bottom, 8)
 
-            // Calorie progress bar
             GeometryReader { geo in
                 ZStack(alignment: .leading) {
                     Capsule()
                         .fill(Color.white.opacity(0.06))
-
                     Capsule()
                         .fill(
                             calPct >= 1
@@ -600,7 +959,6 @@ struct DaySummaryView: View {
             .frame(height: 3)
             .padding(.bottom, 10)
 
-            // Macro bars
             HStack(spacing: 16) {
                 MacroBar(label: "Protein", value: protein, goal: proteinGoal, color: .proteinColor)
                 MacroBar(label: "Carbs", value: carbs, goal: carbGoal, color: .carbColor)
@@ -628,9 +986,7 @@ struct MacroBar: View {
                 Text(label)
                     .font(.system(size: 11))
                     .foregroundColor(.white.opacity(0.25))
-
                 Spacer()
-
                 HStack(spacing: 0) {
                     Text("\(Int(value))")
                         .font(.monoSmall)
@@ -656,13 +1012,21 @@ struct MacroBar: View {
     }
 }
 
-// MARK: - Food Entry Row
+// MARK: - Food Entry Row (with drag handle)
 struct FoodEntryRow: View {
     let entry: FoodLogEntry
+    var isDragging: Bool = false
     let onRemove: () -> Void
 
     var body: some View {
-        HStack(alignment: .top) {
+        HStack(alignment: .center, spacing: 8) {
+            // Drag handle
+            Image(systemName: "line.3.horizontal")
+                .font(.system(size: 9, weight: .bold))
+                .foregroundColor(.white.opacity(0.08))
+                .frame(width: 16)
+
+            // Content
             VStack(alignment: .leading, spacing: 2) {
                 Text(entry.foodName.capitalized)
                     .font(.bodyFood)
@@ -702,6 +1066,8 @@ struct FoodEntryRow: View {
             .padding(.top, 2)
         }
         .padding(.vertical, 5)
+        .opacity(isDragging ? 0.35 : 1.0)
+        .animation(.easeOut(duration: 0.15), value: isDragging)
     }
 }
 
