@@ -90,6 +90,7 @@ final class LogService: ObservableObject {
     func addEntry(userId: UUID, food: Food, grams: Float, mealIndex: Int = 0, date: Date = Date()) async {
         let macros = food.macros(forGrams: grams)
         let nextSort = (todayEntries.last?.sortOrder ?? -1) + 1
+        let tempId = UUID()
 
         let insert = FoodLogInsert(
             userId: userId,
@@ -106,6 +107,24 @@ final class LogService: ObservableObject {
             fat: macros.fat
         )
 
+        // Optimistic insert — shows immediately
+        let optimistic = FoodLogEntry(
+            id: tempId,
+            userId: userId,
+            logDate: dateString(for: date),
+            mealIndex: mealIndex,
+            sortOrder: nextSort,
+            foodId: food.id,
+            customFoodId: nil,
+            foodName: food.name,
+            grams: grams,
+            calories: macros.calories,
+            protein: macros.protein,
+            carbs: macros.carbs,
+            fat: macros.fat
+        )
+        todayEntries.append(optimistic)
+
         do {
             let entry: FoodLogEntry = try await supabase
                 .from("food_log")
@@ -115,13 +134,17 @@ final class LogService: ObservableObject {
                 .execute()
                 .value
 
-            todayEntries.append(entry)
+            // Replace optimistic with real entry
+            if let idx = todayEntries.firstIndex(where: { $0.id == tempId }) {
+                todayEntries[idx] = entry
+            }
 
-            // Fire and forget: update streak
             Task {
                 await updateStreak(logDate: dateString(for: date))
             }
         } catch {
+            // Remove optimistic on failure
+            todayEntries.removeAll { $0.id == tempId }
             print("Add entry error: \(error)")
         }
     }
