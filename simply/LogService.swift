@@ -150,6 +150,24 @@ final class LogService: ObservableObject {
         }
     }
 
+    // MARK: - Batch update positions (for drag-and-drop reordering)
+    @MainActor
+    func updatePositions(_ entries: [FoodLogEntry]) async {
+        for entry in entries {
+            guard let id = entry.id else { continue }
+            let update = PositionUpdate(mealIndex: entry.mealIndex, sortOrder: entry.sortOrder)
+            do {
+                _ = try await supabase
+                    .from("food_log")
+                    .update(update)
+                    .eq("id", value: id.uuidString)
+                    .execute()
+            } catch {
+                print("Update position error for \(id): \(error)")
+            }
+        }
+    }
+
     // MARK: - Delete entry
     @MainActor
     func deleteEntry(_ entry: FoodLogEntry) async {

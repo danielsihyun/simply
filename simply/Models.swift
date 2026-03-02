@@ -141,6 +141,17 @@ struct DailySummary: Codable {
     }
 }
 
+// MARK: - Position Update DTO (for drag-and-drop reordering)
+struct PositionUpdate: Encodable {
+    let mealIndex: Int
+    let sortOrder: Int
+
+    enum CodingKeys: String, CodingKey {
+        case mealIndex = "meal_index"
+        case sortOrder = "sort_order"
+    }
+}
+
 // MARK: - Macros helper
 struct Macros {
     let calories: Float
