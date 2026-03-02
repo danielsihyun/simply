@@ -1,7 +1,5 @@
 import SwiftUI
 import Combine
-import UniformTypeIdentifiers
-import UniformTypeIdentifiers
 
 // MARK: - Date Nav Action Holder (reference type — prevents SwiftUI re-renders)
 class DateNavAction {
@@ -62,79 +60,6 @@ struct SettingsButton: View {
     }
 }
 
-// MARK: - Drop Delegate for entry reordering
-struct EntryDropDelegate: DropDelegate {
-    let targetEntry: FoodLogEntry
-    @Binding var entries: [FoodLogEntry]
-    @Binding var draggedEntry: FoodLogEntry?
-    let onCommit: () -> Void
-
-    func dropEntered(info: DropInfo) {
-        guard let dragged = draggedEntry,
-              dragged.id != targetEntry.id,
-              let fromIndex = entries.firstIndex(where: { $0.id == dragged.id }),
-              let toIndex = entries.firstIndex(where: { $0.id == targetEntry.id })
-        else { return }
-
-        withAnimation(.easeInOut(duration: 0.15)) {
-            // Adopt the target's meal when crossing boundaries
-            entries[fromIndex].mealIndex = entries[toIndex].mealIndex
-            entries.move(
-                fromOffsets: IndexSet(integer: fromIndex),
-                toOffset: toIndex > fromIndex ? toIndex + 1 : toIndex
-            )
-        }
-    }
-
-    func performDrop(info: DropInfo) -> Bool {
-        onCommit()
-        return true
-    }
-
-    func dropUpdated(info: DropInfo) -> DropProposal? {
-        DropProposal(operation: .move)
-    }
-}
-
-// MARK: - Drop Delegate for meal headers (drop onto a meal)
-struct MealHeaderDropDelegate: DropDelegate {
-    let targetMealIndex: Int
-    @Binding var entries: [FoodLogEntry]
-    @Binding var draggedEntry: FoodLogEntry?
-    let onCommit: () -> Void
-
-    func dropEntered(info: DropInfo) {
-        guard let dragged = draggedEntry,
-              let fromIndex = entries.firstIndex(where: { $0.id == dragged.id })
-        else { return }
-
-        // Move entry to end of target meal
-        withAnimation(.easeInOut(duration: 0.15)) {
-            entries[fromIndex].mealIndex = targetMealIndex
-
-            // Find last entry in target meal
-            let lastInMeal = entries.lastIndex(where: { $0.mealIndex == targetMealIndex && $0.id != dragged.id })
-            let entry = entries.remove(at: fromIndex)
-            if let insertAfter = lastInMeal {
-                let adjustedIndex = min(insertAfter + 1, entries.count)
-                entries.insert(entry, at: adjustedIndex)
-            } else {
-                // No entries in this meal yet — find the right position
-                let insertIndex = entries.firstIndex(where: { $0.mealIndex > targetMealIndex }) ?? entries.count
-                entries.insert(entry, at: insertIndex)
-            }
-        }
-    }
-
-    func performDrop(info: DropInfo) -> Bool {
-        onCommit()
-        return true
-    }
-
-    func dropUpdated(info: DropInfo) -> DropProposal? {
-        DropProposal(operation: .move)
-    }
-}
 
 // MARK: - Main View
 struct HomeView: View {
@@ -152,7 +77,6 @@ struct HomeView: View {
     @State private var slideDirection: Edge = .trailing
     @State private var dateNavAction = DateNavAction()
     @State private var showSettings = false
-    @State private var draggedEntry: FoodLogEntry?
     @State private var customFoodName = ""
     @State private var customStep: CustomStep = .serving
     @State private var customServing: Float = 100
@@ -251,7 +175,7 @@ struct HomeView: View {
                                 )
                                 .padding(.bottom, 24)
 
-                                // Food entries (notepad) — drag-and-drop enabled
+                                // Food entries (notepad)
                                 mealEntriesView
 
                                 // New meal divider - shows after double-enter
@@ -296,11 +220,6 @@ struct HomeView: View {
                         .clipped()
                     }
                     .scrollDismissesKeyboard(.interactively)
-                    .onDrop(of: [UTType.text], isTargeted: nil) { _ in
-                        // Last resort: clear drag state if dropped on empty scroll area
-                        draggedEntry = nil
-                        return true
-                    }
                 }
             }
         }
@@ -330,9 +249,6 @@ struct HomeView: View {
         .simultaneousGesture(
             DragGesture(minimumDistance: 50, coordinateSpace: .local)
                 .onEnded { value in
-                    // Don't swipe while dragging an entry
-                    guard draggedEntry == nil else { return }
-
                     let horizontal = value.translation.width
                     let vertical = value.translation.height
                     guard abs(horizontal) > abs(vertical) * 2 else { return }
@@ -400,7 +316,7 @@ struct HomeView: View {
         .padding(.bottom, 16)
     }
 
-    // MARK: - Meal entries (drag-and-drop enabled)
+    // MARK: - Meal entries (notepad style)
     private var mealEntriesView: some View {
         let groups = groupedEntries()
         return ForEach(Array(groups.enumerated()), id: \.offset) { mealIdx, group in
@@ -421,31 +337,14 @@ struct HomeView: View {
                         .foregroundColor(.textVeryMuted)
                 }
                 .padding(.bottom, 2)
-                .contentShape(Rectangle())
-                .onDrop(of: [UTType.text], delegate: MealHeaderDropDelegate(
-                    targetMealIndex: group.first?.mealIndex ?? mealIdx,
-                    entries: $logService.todayEntries,
-                    draggedEntry: $draggedEntry,
-                    onCommit: commitReorder
-                ))
 
-                // Food items — draggable
+                // Food items
                 ForEach(group) { entry in
-                    FoodEntryRow(entry: entry, isDragging: draggedEntry?.id == entry.id) {
+                    FoodEntryRow(entry: entry) {
                         Task {
                             await logService.deleteEntry(entry)
                         }
                     }
-                    .onDrag {
-                        draggedEntry = entry
-                        return NSItemProvider(object: (entry.id?.uuidString ?? "") as NSString)
-                    }
-                    .onDrop(of: [UTType.text], delegate: EntryDropDelegate(
-                        targetEntry: entry,
-                        entries: $logService.todayEntries,
-                        draggedEntry: $draggedEntry,
-                        onCommit: commitReorder
-                    ))
                 }
 
                 // Divider between meals
@@ -459,25 +358,6 @@ struct HomeView: View {
             }
             .padding(.bottom, 4)
         }
-    }
-
-    // MARK: - Commit reorder after drag
-    private func commitReorder() {
-        // Recalculate sortOrder within each meal group
-        var mealCounters: [Int: Int] = [:]
-        for i in 0..<logService.todayEntries.count {
-            let mealIdx = logService.todayEntries[i].mealIndex
-            let order = mealCounters[mealIdx, default: 0]
-            logService.todayEntries[i].sortOrder = order
-            mealCounters[mealIdx] = order + 1
-        }
-
-        // Persist to Supabase
-        Task {
-            await logService.updatePositions(logService.todayEntries)
-        }
-
-        draggedEntry = nil
     }
 
     // MARK: - Input area
@@ -563,7 +443,6 @@ struct HomeView: View {
                 .autocorrectionDisabled()
                 .textInputAutocapitalization(.never)
                 .focused($inputFocused)
-                .allowsHitTesting(draggedEntry == nil)
                 .onChange(of: inputText) { oldValue, newValue in
                     if mode == .search {
                         foodService.search(query: newValue)
@@ -671,11 +550,6 @@ struct HomeView: View {
             }
         }
         .padding(.top, 4)
-        .onDrop(of: [UTType.text], isTargeted: nil) { _ in
-            // Consume drop to prevent TextField from inserting UUID text
-            draggedEntry = nil
-            return true
-        }
     }
 
     // Dynamic placeholder
@@ -1012,21 +886,13 @@ struct MacroBar: View {
     }
 }
 
-// MARK: - Food Entry Row (with drag handle)
+// MARK: - Food Entry Row
 struct FoodEntryRow: View {
     let entry: FoodLogEntry
-    var isDragging: Bool = false
     let onRemove: () -> Void
 
     var body: some View {
-        HStack(alignment: .center, spacing: 8) {
-            // Drag handle
-            Image(systemName: "line.3.horizontal")
-                .font(.system(size: 9, weight: .bold))
-                .foregroundColor(.white.opacity(0.08))
-                .frame(width: 16)
-
-            // Content
+        HStack(alignment: .top) {
             VStack(alignment: .leading, spacing: 2) {
                 Text(entry.foodName.capitalized)
                     .font(.bodyFood)
@@ -1066,8 +932,6 @@ struct FoodEntryRow: View {
             .padding(.top, 2)
         }
         .padding(.vertical, 5)
-        .opacity(isDragging ? 0.35 : 1.0)
-        .animation(.easeOut(duration: 0.15), value: isDragging)
     }
 }
 

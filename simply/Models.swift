@@ -141,6 +141,41 @@ struct DailySummary: Codable {
     }
 }
 
+// MARK: - Position Update DTO (for drag-and-drop reordering)
+struct PositionUpdate: Encodable {
+    let mealIndex: Int
+    let sortOrder: Int
+
+    enum CodingKeys: String, CodingKey {
+        case mealIndex = "meal_index"
+        case sortOrder = "sort_order"
+    }
+}
+
+// MARK: - Custom Food Insert DTO
+struct CustomFoodInsert: Encodable {
+    let externalId: String
+    let name: String
+    let brand: String?
+    let servingLabel: String
+    let servingGrams: Float
+    let calPerServing: Float
+    let proteinPerServing: Float
+    let carbsPerServing: Float
+    let fatPerServing: Float
+
+    enum CodingKeys: String, CodingKey {
+        case externalId = "external_id"
+        case name, brand
+        case servingLabel = "serving_label"
+        case servingGrams = "serving_grams"
+        case calPerServing = "cal_per_serving"
+        case proteinPerServing = "protein_per_serving"
+        case carbsPerServing = "carbs_per_serving"
+        case fatPerServing = "fat_per_serving"
+    }
+}
+
 // MARK: - Macros helper
 struct Macros {
     let calories: Float

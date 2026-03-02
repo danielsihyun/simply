@@ -1,6 +1,6 @@
 import Foundation
-import Supabase
 import Combine
+import Supabase
 
 final class FoodService: ObservableObject {
     @Published var searchResults: [Food] = []
@@ -55,5 +55,42 @@ final class FoodService: ObservableObject {
         searchTask?.cancel()
         searchResults = []
         isSearching = false
+    }
+
+    /// Create a custom food and insert into the foods table
+    @MainActor
+    func createCustomFood(
+        name: String,
+        servingGrams: Float,
+        calories: Float,
+        protein: Float,
+        carbs: Float,
+        fat: Float
+    ) async -> Food? {
+        let insert = CustomFoodInsert(
+            externalId: "custom:\(UUID().uuidString)",
+            name: name.lowercased(),
+            brand: "Custom",
+            servingLabel: "\(Int(servingGrams))g",
+            servingGrams: servingGrams,
+            calPerServing: calories,
+            proteinPerServing: protein,
+            carbsPerServing: carbs,
+            fatPerServing: fat
+        )
+
+        do {
+            let food: Food = try await supabase
+                .from("foods")
+                .insert(insert)
+                .select()
+                .single()
+                .execute()
+                .value
+            return food
+        } catch {
+            print("Create custom food error: \(error)")
+            return nil
+        }
     }
 }
