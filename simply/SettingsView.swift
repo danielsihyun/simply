@@ -68,7 +68,7 @@ struct SettingsView: View {
 
                                 Spacer()
 
-                                Text("kcal")
+                                Text("cal")
                                     .font(.system(size: 14))
                                     .foregroundColor(.textMuted)
                             }
