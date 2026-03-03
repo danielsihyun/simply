@@ -443,6 +443,7 @@ struct HomeView: View {
                 .autocorrectionDisabled()
                 .textInputAutocapitalization(.never)
                 .focused($inputFocused)
+                .frame(height: 20)
                 .onChange(of: inputText) { oldValue, newValue in
                     if mode == .search {
                         foodService.search(query: newValue)
