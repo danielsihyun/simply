@@ -332,7 +332,7 @@ struct HomeView: View {
                     Spacer()
 
                     let mealCal = group.reduce(0) { $0 + $1.calories }
-                    Text("\(Int(mealCal)) cal")
+                    Text("\(Int(mealCal)) calories")
                         .font(.monoTiny)
                         .foregroundColor(.textVeryMuted)
                 }
