@@ -178,69 +178,6 @@ struct HomeView: View {
                                 // Food entries (notepad)
                                 mealEntriesView
 
-                                // Pending food row (grams mode) — same layout as FoodEntryRow
-                                if mode == .grams, let food = pendingFood {
-                                    HStack(alignment: .top) {
-                                        VStack(alignment: .leading, spacing: 2) {
-                                            Text(food.name.capitalized)
-                                                .font(.bodyFood)
-                                                .foregroundColor(.textPrimary)
-
-                                            // Macro preview (mirrors FoodEntryRow detail line)
-                                            HStack(spacing: 10) {
-                                                let grams = previewGrams > 0 ? previewGrams : food.servingGrams
-                                                Text("\(Int(grams))g")
-                                                    .font(.labelSmall)
-                                                    .foregroundColor(.textMuted)
-
-                                                Text("·")
-                                                    .font(.labelSmall)
-                                                    .foregroundColor(.white.opacity(0.1))
-
-                                                if let macros = previewMacros {
-                                                    Text("\(Int(macros.calories))")
-                                                        .font(.monoSmall)
-                                                        .foregroundColor(.white.opacity(0.4))
-                                                    Text("\(Int(macros.protein))p")
-                                                        .font(.monoSmall)
-                                                        .foregroundColor(.proteinColor)
-                                                    Text("\(Int(macros.carbs))c")
-                                                        .font(.monoSmall)
-                                                        .foregroundColor(.carbColor)
-                                                    Text("\(Int(macros.fat))f")
-                                                        .font(.monoSmall)
-                                                        .foregroundColor(.fatColor)
-                                                } else {
-                                                    let fallbackMacros = food.macros(forGrams: grams)
-                                                    Text("\(Int(fallbackMacros.calories))")
-                                                        .font(.monoSmall)
-                                                        .foregroundColor(.white.opacity(0.4))
-                                                    Text("\(Int(fallbackMacros.protein))p")
-                                                        .font(.monoSmall)
-                                                        .foregroundColor(.proteinColor)
-                                                    Text("\(Int(fallbackMacros.carbs))c")
-                                                        .font(.monoSmall)
-                                                        .foregroundColor(.carbColor)
-                                                    Text("\(Int(fallbackMacros.fat))f")
-                                                        .font(.monoSmall)
-                                                        .foregroundColor(.fatColor)
-                                                }
-                                            }
-                                        }
-
-                                        Spacer()
-
-                                        Button(action: { cancelPending() }) {
-                                            Text("×")
-                                                .font(.system(size: 15))
-                                                .foregroundColor(.white.opacity(0.12))
-                                        }
-                                        .padding(.top, 2)
-                                    }
-                                    .padding(.vertical, 5)
-                                    .padding(.top, logService.todayEntries.isEmpty ? 0 : -4)
-                                }
-
                                 // New meal divider - shows after double-enter
                                 if !logService.todayEntries.isEmpty {
                                     let latestMeal = logService.todayEntries.map(\.mealIndex).max() ?? 0
@@ -277,7 +214,98 @@ struct HomeView: View {
                                     }
                                     .padding(.bottom, 2)
                                 }
-                                inputAreaView
+
+                                // Pending food row (grams mode) — same layout as FoodEntryRow
+                                if mode == .grams, let food = pendingFood {
+                                    let isFirstInMeal: Bool = {
+                                        if logService.todayEntries.isEmpty { return true }
+                                        let latestMeal = logService.todayEntries.map(\.mealIndex).max() ?? 0
+                                        return currentMealIndex > latestMeal
+                                    }()
+
+                                    HStack(alignment: .top) {
+                                        VStack(alignment: .leading, spacing: 2) {
+                                            Text(food.name.capitalized)
+                                                .font(.bodyFood)
+                                                .foregroundColor(.textPrimary)
+
+                                            // Detail line with inline grams input
+                                            HStack(spacing: 10) {
+                                                HStack(spacing: 1) {
+                                                    TextField(
+                                                        "\(Int(food.servingGrams))",
+                                                        text: $inputText
+                                                    )
+                                                    .font(.labelSmall)
+                                                    .foregroundColor(.textMuted)
+                                                    .keyboardType(.default)
+                                                    .autocorrectionDisabled()
+                                                    .textInputAutocapitalization(.never)
+                                                    .focused($inputFocused)
+                                                    .transaction { $0.animation = nil }
+                                                    .onKeyPress(.return) {
+                                                        handleSubmit()
+                                                        return .handled
+                                                    }
+                                                    .fixedSize()
+
+                                                    Text("g")
+                                                        .font(.labelSmall)
+                                                        .foregroundColor(.textMuted)
+                                                }
+
+                                                Text("·")
+                                                    .font(.labelSmall)
+                                                    .foregroundColor(.white.opacity(0.1))
+
+                                                if let macros = previewMacros {
+                                                    Text("\(Int(macros.calories))")
+                                                        .font(.monoSmall)
+                                                        .foregroundColor(.white.opacity(0.4))
+                                                    Text("\(Int(macros.protein))p")
+                                                        .font(.monoSmall)
+                                                        .foregroundColor(.proteinColor)
+                                                    Text("\(Int(macros.carbs))c")
+                                                        .font(.monoSmall)
+                                                        .foregroundColor(.carbColor)
+                                                    Text("\(Int(macros.fat))f")
+                                                        .font(.monoSmall)
+                                                        .foregroundColor(.fatColor)
+                                                } else {
+                                                    let grams = Float(inputText) ?? food.servingGrams
+                                                    let fallbackMacros = food.macros(forGrams: grams)
+                                                    Text("\(Int(fallbackMacros.calories))")
+                                                        .font(.monoSmall)
+                                                        .foregroundColor(.white.opacity(0.4))
+                                                    Text("\(Int(fallbackMacros.protein))p")
+                                                        .font(.monoSmall)
+                                                        .foregroundColor(.proteinColor)
+                                                    Text("\(Int(fallbackMacros.carbs))c")
+                                                        .font(.monoSmall)
+                                                        .foregroundColor(.carbColor)
+                                                    Text("\(Int(fallbackMacros.fat))f")
+                                                        .font(.monoSmall)
+                                                        .foregroundColor(.fatColor)
+                                                }
+                                            }
+                                        }
+
+                                        Spacer()
+
+                                        Button(action: { cancelPending() }) {
+                                            Text("×")
+                                                .font(.system(size: 15))
+                                                .foregroundColor(.white.opacity(0.12))
+                                        }
+                                        .padding(.top, 2)
+                                    }
+                                    .padding(.vertical, 5)
+                                    .padding(.top, isFirstInMeal ? 0 : -4)
+                                }
+
+                                if mode != .grams {
+                                    inputAreaView
+                                }
 
                                 // Bottom padding
                                 Spacer().frame(height: 120)
@@ -516,12 +544,6 @@ struct HomeView: View {
                 .onKeyPress(.return) {
                     handleSubmit()
                     return .handled
-                }
-
-                if mode == .grams {
-                    Text("g")
-                        .font(.system(size: 11))
-                        .foregroundColor(.textMuted)
                 }
 
                 if mode == .custom {
