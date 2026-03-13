@@ -15,14 +15,26 @@ struct BarcodeScanButton: View {
     }
 }
 
+// MARK: - Scan Result
+enum ScanResult {
+    /// Found in local DB (previously scanned barcode)
+    case existingFood(Food)
+    /// Found in OpenFoodFacts — create food with barcode and select
+    case scannedFood(ScannedFood, barcode: String)
+    /// Not found anywhere — enter custom flow with barcode attached
+    case notFound(barcode: String)
+}
+
 // MARK: - Scanner Sheet
 struct BarcodeScannerView: View {
     @Environment(\.dismiss) private var dismiss
-    let onFoodScanned: (ScannedFood) -> Void
+    let foodService: FoodService
+    let onResult: (ScanResult) -> Void
 
     @State private var scannedCode: String?
     @State private var isLookingUp = false
     @State private var errorMessage: String?
+    @State private var showNotFound = false
 
     var body: some View {
         ZStack {
@@ -71,8 +83,33 @@ struct BarcodeScannerView: View {
                 Spacer()
 
                 // Status text
-                VStack(spacing: 8) {
-                    if let error = errorMessage {
+                VStack(spacing: 12) {
+                    if showNotFound, let code = scannedCode {
+                        Text("Product not found")
+                            .font(.system(size: 14))
+                            .foregroundColor(.white.opacity(0.8))
+
+                        Button {
+                            onResult(.notFound(barcode: code))
+                            dismiss()
+                        } label: {
+                            Text("Log manually")
+                                .font(.system(size: 14, weight: .medium))
+                                .foregroundColor(.white)
+                                .padding(.horizontal, 20)
+                                .padding(.vertical, 8)
+                                .background(.ultraThinMaterial)
+                                .cornerRadius(8)
+                        }
+
+                        Button("Scan again") {
+                            scannedCode = nil
+                            showNotFound = false
+                            errorMessage = nil
+                        }
+                        .font(.system(size: 13))
+                        .foregroundColor(.white.opacity(0.5))
+                    } else if let error = errorMessage {
                         Text(error)
                             .font(.system(size: 14))
                             .foregroundColor(.white.opacity(0.8))
@@ -106,18 +143,30 @@ struct BarcodeScannerView: View {
     private func lookupBarcode(_ code: String) {
         isLookingUp = true
         errorMessage = nil
+        showNotFound = false
 
         Task {
-            do {
-                let food = try await OpenFoodFactsService.lookup(barcode: code)
+            // 1. Check local database first (previously scanned barcodes)
+            if let existingFood = await foodService.lookupByBarcode(code: code) {
                 await MainActor.run {
-                    onFoodScanned(food)
+                    onResult(.existingFood(existingFood))
+                    dismiss()
+                }
+                return
+            }
+
+            // 2. Try OpenFoodFacts
+            do {
+                let scanned = try await OpenFoodFactsService.lookup(barcode: code)
+                await MainActor.run {
+                    onResult(.scannedFood(scanned, barcode: code))
                     dismiss()
                 }
             } catch LookupError.notFound {
+                // 3. Not found anywhere — offer manual entry
                 await MainActor.run {
                     isLookingUp = false
-                    errorMessage = "Product not found"
+                    showNotFound = true
                 }
             } catch {
                 await MainActor.run {
