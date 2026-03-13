@@ -189,7 +189,7 @@ struct HomeView: View {
                                             .fill(Color.white.opacity(0.04))
                                             .frame(height: 1)
                                             .padding(.top, 14)
-                                            .padding(.bottom, 4)
+                                            .padding(.bottom, 12)
 
                                         HStack {
                                             Text("Meal \(existingMealCount + 1)")
