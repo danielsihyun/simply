@@ -84,6 +84,7 @@ struct HomeView: View {
     @State private var customProtein: Float = 0
     @State private var customCarbs: Float = 0
     @FocusState private var inputFocused: Bool
+    @FocusState private var gramsFocused: Bool
 
     enum InputMode { case search, grams, custom }
 
@@ -241,7 +242,7 @@ struct HomeView: View {
                                                     .keyboardType(.default)
                                                     .autocorrectionDisabled()
                                                     .textInputAutocapitalization(.never)
-                                                    .focused($inputFocused)
+                                                    .focused($gramsFocused)
                                                     .transaction { $0.animation = nil }
                                                     .onKeyPress(.return) {
                                                         handleSubmit()
@@ -303,9 +304,7 @@ struct HomeView: View {
                                     .padding(.top, isFirstInMeal ? 0 : -4)
                                 }
 
-                                if mode != .grams {
-                                    inputAreaView
-                                }
+                                inputAreaView
 
                                 // Bottom padding
                                 Spacer().frame(height: 120)
@@ -326,7 +325,11 @@ struct HomeView: View {
             }
         }
         .onTapGesture {
-            inputFocused = true
+            if mode == .grams {
+                gramsFocused = true
+            } else {
+                inputFocused = true
+            }
         }
         .task {
             dateNavAction.onNavigate = { [self] newDate, direction in
@@ -515,44 +518,46 @@ struct HomeView: View {
                 .padding(.bottom, 4)
             }
 
-            // Input row
-            HStack(spacing: 10) {
-                TextField(
-                    currentPlaceholder,
-                    text: $inputText
-                )
-                .font(mode == .search ? .inputSearch : .inputGrams)
-                .foregroundColor(mode == .search ? .textPrimary : .textMuted)
-                .keyboardType(mode == .custom ? .decimalPad : .default)
-                .autocorrectionDisabled()
-                .textInputAutocapitalization(.never)
-                .focused($inputFocused)
-                .transaction { $0.animation = nil }
-                .onChange(of: inputText) { oldValue, newValue in
-                    if mode == .search {
-                        foodService.search(query: newValue)
+            if mode != .grams {
+                // Input row (hidden in grams mode — input is inline in pending row)
+                HStack(spacing: 10) {
+                    TextField(
+                        currentPlaceholder,
+                        text: $inputText
+                    )
+                    .font(mode == .search ? .inputSearch : .inputGrams)
+                    .foregroundColor(mode == .search ? .textPrimary : .textMuted)
+                    .keyboardType(mode == .custom ? .decimalPad : .default)
+                    .autocorrectionDisabled()
+                    .textInputAutocapitalization(.never)
+                    .focused($inputFocused)
+                    .transaction { $0.animation = nil }
+                    .onChange(of: inputText) { oldValue, newValue in
+                        if mode == .search {
+                            foodService.search(query: newValue)
 
-                        if newValue.isEmpty && !oldValue.isEmpty && !suppressUndo {
-                            let latestMeal = logService.todayEntries.map(\.mealIndex).max() ?? 0
-                            if currentMealIndex > latestMeal {
-                                currentMealIndex = latestMeal
+                            if newValue.isEmpty && !oldValue.isEmpty && !suppressUndo {
+                                let latestMeal = logService.todayEntries.map(\.mealIndex).max() ?? 0
+                                if currentMealIndex > latestMeal {
+                                    currentMealIndex = latestMeal
+                                }
                             }
                         }
+                        suppressUndo = false
                     }
-                    suppressUndo = false
-                }
-                .onKeyPress(.return) {
-                    handleSubmit()
-                    return .handled
-                }
+                    .onKeyPress(.return) {
+                        handleSubmit()
+                        return .handled
+                    }
 
-                if mode == .custom {
-                    Text(customStep == .serving ? "g" : customStep == .calories ? "cal" : "g")
-                        .font(.system(size: 11))
-                        .foregroundColor(.textMuted)
+                    if mode == .custom {
+                        Text(customStep == .serving ? "g" : customStep == .calories ? "cal" : "g")
+                            .font(.system(size: 11))
+                            .foregroundColor(.textMuted)
+                    }
                 }
+                .padding(.vertical, 4)
             }
-            .padding(.vertical, 4)
 
             // Double-enter hint
             if mode == .search && lastWasEnter && inputText.isEmpty && !logService.todayEntries.isEmpty {
@@ -676,7 +681,7 @@ struct HomeView: View {
         mode = .grams
         inputText = "\(Int(food.servingGrams))"
         foodService.clearSearch()
-        inputFocused = true
+        gramsFocused = true
     }
 
     private func cancelPending() {
@@ -684,7 +689,9 @@ struct HomeView: View {
         mode = .search
         suppressUndo = true
         inputText = ""
-        inputFocused = true
+        DispatchQueue.main.async {
+            inputFocused = true
+        }
     }
 
     private func handleSubmit() {
@@ -739,7 +746,11 @@ struct HomeView: View {
         suppressUndo = true
         inputText = ""
         lastWasEnter = false
-        inputFocused = true
+
+        // Focus after next layout pass so the search TextField is in the tree
+        DispatchQueue.main.async {
+            inputFocused = true
+        }
     }
 
     // MARK: - Custom food flow
