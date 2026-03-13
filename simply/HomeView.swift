@@ -85,6 +85,7 @@ struct HomeView: View {
     @State private var customCals: Float = 0
     @State private var customProtein: Float = 0
     @State private var customCarbs: Float = 0
+    @State private var pendingBarcode: String? = nil
     @FocusState private var inputFocused: Bool
     @FocusState private var gramsFocused: Bool
 
@@ -353,8 +354,8 @@ struct HomeView: View {
                 .environmentObject(authService)
         }
         .sheet(isPresented: $showScanner) {
-            BarcodeScannerView { scannedFood in
-                handleScannedFood(scannedFood)
+            BarcodeScannerView(foodService: foodService) { result in
+                handleScanResult(result)
             }
         }
         .simultaneousGesture(
@@ -702,6 +703,7 @@ struct HomeView: View {
         lastWasEnter = false
         lastWasBackspace = false
         suppressUndo = true
+        pendingBarcode = nil
 
         Task {
             let entries = await logService.preloadEntries(userId: userId, date: newDate)
@@ -712,26 +714,39 @@ struct HomeView: View {
     }
 
     // MARK: - Actions
-    private func handleScannedFood(_ scanned: ScannedFood) {
-        Task {
-            // Create a custom food from the scanned nutrition data (per 100g → per serving)
-            let servingCal = scanned.caloriesPer100g * scanned.servingGrams / 100
-            let servingProtein = scanned.proteinPer100g * scanned.servingGrams / 100
-            let servingCarbs = scanned.carbsPer100g * scanned.servingGrams / 100
-            let servingFat = scanned.fatPer100g * scanned.servingGrams / 100
+    private func handleScanResult(_ result: ScanResult) {
+        switch result {
+        case .existingFood(let food):
+            // Found in local DB — go straight to grams mode
+            selectFood(food)
 
-            if let food = await foodService.createCustomFood(
-                name: scanned.name,
-                servingGrams: scanned.servingGrams,
-                calories: servingCal,
-                protein: servingProtein,
-                carbs: servingCarbs,
-                fat: servingFat
-            ) {
-                await MainActor.run {
-                    selectFood(food)
+        case .scannedFood(let scanned, let barcode):
+            // Found in OpenFoodFacts — create food with barcode, then grams mode
+            Task {
+                let servingCal = scanned.caloriesPer100g * scanned.servingGrams / 100
+                let servingProtein = scanned.proteinPer100g * scanned.servingGrams / 100
+                let servingCarbs = scanned.carbsPer100g * scanned.servingGrams / 100
+                let servingFat = scanned.fatPer100g * scanned.servingGrams / 100
+
+                if let food = await foodService.createCustomFood(
+                    name: scanned.name,
+                    servingGrams: scanned.servingGrams,
+                    calories: servingCal,
+                    protein: servingProtein,
+                    carbs: servingCarbs,
+                    fat: servingFat,
+                    barcode: barcode
+                ) {
+                    await MainActor.run {
+                        selectFood(food)
+                    }
                 }
             }
+
+        case .notFound(let barcode):
+            // Not found — save barcode, let user type food name and enter custom flow
+            pendingBarcode = barcode
+            inputFocused = true
         }
     }
 
@@ -748,6 +763,7 @@ struct HomeView: View {
         mode = .search
         suppressUndo = true
         inputText = ""
+        pendingBarcode = nil
         DispatchQueue.main.async {
             inputFocused = true
         }
@@ -839,6 +855,7 @@ struct HomeView: View {
         inputText = ""
         lastWasEnter = false
         lastWasBackspace = false
+        pendingBarcode = nil
 
         // Focus after next layout pass so the search TextField is in the tree
         DispatchQueue.main.async {
@@ -867,6 +884,7 @@ struct HomeView: View {
         customStep = .serving
         suppressUndo = true
         inputText = ""
+        pendingBarcode = nil
         inputFocused = true
     }
 
@@ -905,6 +923,7 @@ struct HomeView: View {
         let carbs = customCarbs
         let meal = currentMealIndex
         let date = selectedDate
+        let barcode = pendingBarcode
 
         // Reset immediately so UI is responsive
         mode = .search
@@ -913,6 +932,7 @@ struct HomeView: View {
         suppressUndo = true
         inputText = ""
         lastWasEnter = false
+        pendingBarcode = nil
         inputFocused = true
 
         Task {
@@ -922,7 +942,8 @@ struct HomeView: View {
                 calories: cals,
                 protein: protein,
                 carbs: carbs,
-                fat: fat
+                fat: fat,
+                barcode: barcode
             ) {
                 await logService.addEntry(
                     userId: userId,
