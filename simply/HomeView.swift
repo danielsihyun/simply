@@ -585,7 +585,11 @@ struct HomeView: View {
 
             // Double-backspace hint
             if mode == .search && lastWasBackspace && inputText.isEmpty && !logService.todayEntries.isEmpty {
-                Text("press delete again to remove last entry")
+                let latestMeal = logService.todayEntries.map(\.mealIndex).max() ?? 0
+                let onEmptyNewMeal = currentMealIndex > latestMeal
+                Text(onEmptyNewMeal
+                     ? "press delete again to remove meal"
+                     : "press delete again to remove last entry")
                     .font(.system(size: 11))
                     .foregroundColor(.textVeryMuted)
                     .italic()
@@ -758,10 +762,14 @@ struct HomeView: View {
         let onEmptyNewMeal = currentMealIndex > latestMeal
 
         if onEmptyNewMeal {
-            // On an empty new meal — backspace removes the meal divider, go back
-            currentMealIndex = latestMeal
-            lastWasBackspace = false
-            lastWasEnter = false
+            // On an empty new meal — double backspace to remove the meal divider
+            if lastWasBackspace {
+                currentMealIndex = latestMeal
+                lastWasBackspace = false
+            } else {
+                lastWasBackspace = true
+                lastWasEnter = false
+            }
         } else {
             // Has entries in current meal
             guard !logService.todayEntries.isEmpty else { return }
