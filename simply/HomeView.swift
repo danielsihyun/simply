@@ -71,6 +71,7 @@ struct HomeView: View {
     @State private var mode: InputMode = .search
     @State private var pendingFood: Food?
     @State private var lastWasEnter = false
+    @State private var lastWasBackspace = false
     @State private var currentMealIndex = 0
     @State private var suppressUndo = false
     @State private var selectedDate = Date()
@@ -544,9 +545,20 @@ struct HomeView: View {
                             }
                         }
                         suppressUndo = false
+                        // Reset backspace/enter state when typing
+                        if !newValue.isEmpty {
+                            lastWasBackspace = false
+                            lastWasEnter = false
+                        }
                     }
                     .onKeyPress(.return) {
                         handleSubmit()
+                        lastWasBackspace = false
+                        return .handled
+                    }
+                    .onKeyPress(.delete) {
+                        guard mode == .search && inputText.isEmpty else { return .ignored }
+                        handleBackspace()
                         return .handled
                     }
 
@@ -569,6 +581,15 @@ struct HomeView: View {
                         .italic()
                         .padding(.bottom, 4)
                 }
+            }
+
+            // Double-backspace hint
+            if mode == .search && lastWasBackspace && inputText.isEmpty && !logService.todayEntries.isEmpty {
+                Text("press delete again to remove last entry")
+                    .font(.system(size: 11))
+                    .foregroundColor(.textVeryMuted)
+                    .italic()
+                    .padding(.bottom, 4)
             }
 
             // Search suggestions or "add custom" option
@@ -665,6 +686,7 @@ struct HomeView: View {
         customFoodName = ""
         customStep = .serving
         lastWasEnter = false
+        lastWasBackspace = false
         suppressUndo = true
 
         Task {
@@ -731,6 +753,28 @@ struct HomeView: View {
         inputFocused = true
     }
 
+    private func handleBackspace() {
+        guard !logService.todayEntries.isEmpty else { return }
+
+        if lastWasBackspace {
+            // Second backspace — remove the last entry in the current meal
+            if let lastEntry = logService.todayEntries.last {
+                Task {
+                    await logService.deleteEntry(lastEntry)
+                    // If we removed the last entry in a new meal, step back
+                    let latestMeal = logService.todayEntries.map(\.mealIndex).max() ?? 0
+                    if currentMealIndex > latestMeal {
+                        currentMealIndex = latestMeal
+                    }
+                }
+            }
+            lastWasBackspace = false
+        } else {
+            lastWasBackspace = true
+            lastWasEnter = false
+        }
+    }
+
     private func confirmFood() {
         guard let food = pendingFood,
               let userId = authService.userId else { return }
@@ -746,6 +790,7 @@ struct HomeView: View {
         suppressUndo = true
         inputText = ""
         lastWasEnter = false
+        lastWasBackspace = false
 
         // Focus after next layout pass so the search TextField is in the tree
         DispatchQueue.main.async {
