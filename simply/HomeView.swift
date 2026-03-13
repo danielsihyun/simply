@@ -53,7 +53,7 @@ struct SettingsButton: View {
     var body: some View {
         Button(action: action) {
             Image(systemName: "gearshape")
-                .font(.system(size: 14, weight: .medium))
+                .font(.system(size: 15, weight: .medium))
                 .frame(width: 30, height: 30)
         }
         .buttonStyle(.glass)
