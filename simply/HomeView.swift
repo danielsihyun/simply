@@ -188,8 +188,8 @@ struct HomeView: View {
                                         Rectangle()
                                             .fill(Color.white.opacity(0.04))
                                             .frame(height: 1)
-                                            .padding(.top, 14)
-                                            .padding(.bottom, 12)
+                                            .padding(.top, 9)
+                                            .padding(.bottom, 8)
 
                                         HStack {
                                             Text("Meal \(existingMealCount + 1)")
@@ -456,8 +456,8 @@ struct HomeView: View {
                     Rectangle()
                         .fill(Color.white.opacity(0.04))
                         .frame(height: 1)
-                        .padding(.top, 14)
-                        .padding(.bottom, 12)
+                        .padding(.top, 9)
+                        .padding(.bottom, 8)
                 }
             }
             .padding(.bottom, 4)
