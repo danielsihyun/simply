@@ -203,6 +203,17 @@ struct HomeView: View {
                                 }
 
                                 // Inline input area
+                                if logService.todayEntries.isEmpty {
+                                    HStack {
+                                        Text("Meal 1")
+                                            .font(.labelMealHeader)
+                                            .foregroundColor(.textMuted)
+                                            .textCase(.uppercase)
+                                            .tracking(0.8)
+                                        Spacer()
+                                    }
+                                    .padding(.bottom, 2)
+                                }
                                 inputAreaView
 
                                 // Bottom padding
@@ -236,11 +247,10 @@ struct HomeView: View {
                 await logService.loadEntries(userId: userId, date: selectedDate)
                 currentMealIndex = logService.todayEntries.map(\.mealIndex).max() ?? 0
             }
-        }
-        .onAppear {
-            DispatchQueue.main.asyncAfter(deadline: .now() + 0.5) {
-                inputFocused = true
-            }
+
+            // Auto-focus after data is ready
+            try? await Task.sleep(nanoseconds: 200_000_000)
+            inputFocused = true
         }
         .sheet(isPresented: $showSettings) {
             SettingsView()
@@ -332,7 +342,7 @@ struct HomeView: View {
                     Spacer()
 
                     let mealCal = group.reduce(0) { $0 + $1.calories }
-                    Text("\(Int(mealCal)) cal")
+                    Text("\(Int(mealCal)) kcal")
                         .font(.monoTiny)
                         .foregroundColor(.textVeryMuted)
                 }
@@ -443,7 +453,7 @@ struct HomeView: View {
                 .autocorrectionDisabled()
                 .textInputAutocapitalization(.never)
                 .focused($inputFocused)
-                .frame(height: 20)
+                .transaction { $0.animation = nil }
                 .onChange(of: inputText) { oldValue, newValue in
                     if mode == .search {
                         foodService.search(query: newValue)
