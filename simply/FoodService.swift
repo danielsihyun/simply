@@ -57,6 +57,24 @@ final class FoodService: ObservableObject {
         isSearching = false
     }
 
+    /// Look up a food by barcode in the local database
+    func lookupByBarcode(code: String) async -> Food? {
+        let externalId = "barcode:\(code)"
+        do {
+            let foods: [Food] = try await supabase
+                .from("foods")
+                .select()
+                .eq("external_id", value: externalId)
+                .limit(1)
+                .execute()
+                .value
+            return foods.first
+        } catch {
+            print("Barcode lookup error: \(error)")
+            return nil
+        }
+    }
+
     /// Create a custom food and insert into the foods table
     @MainActor
     func createCustomFood(
@@ -65,12 +83,20 @@ final class FoodService: ObservableObject {
         calories: Float,
         protein: Float,
         carbs: Float,
-        fat: Float
+        fat: Float,
+        barcode: String? = nil
     ) async -> Food? {
+        let externalId: String
+        if let barcode = barcode {
+            externalId = "barcode:\(barcode)"
+        } else {
+            externalId = "custom:\(UUID().uuidString)"
+        }
+
         let insert = CustomFoodInsert(
-            externalId: "custom:\(UUID().uuidString)",
+            externalId: externalId,
             name: name.lowercased(),
-            brand: "Custom",
+            brand: barcode != nil ? "Scanned" : "Custom",
             servingLabel: "\(Int(servingGrams))g",
             servingGrams: servingGrams,
             calPerServing: calories,
