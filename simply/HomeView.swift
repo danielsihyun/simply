@@ -377,7 +377,7 @@ struct HomeView: View {
             if mode == .grams, let food = pendingFood {
                 HStack {
                     Text(food.name.capitalized)
-                        .font(.system(size: 14))
+                        .font(.bodyFood)
                         .foregroundColor(.white.opacity(0.7))
 
                     Spacer()
