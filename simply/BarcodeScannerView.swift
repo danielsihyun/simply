@@ -8,7 +8,7 @@ struct BarcodeScanButton: View {
     var body: some View {
         Button(action: action) {
             Image(systemName: "barcode.viewfinder")
-                .font(.system(size: 14, weight: .medium))
+                .font(.system(size: 15, weight: .medium))
                 .frame(width: 30, height: 30)
         }
         .buttonStyle(.glass)
