@@ -78,6 +78,7 @@ struct HomeView: View {
     @State private var slideDirection: Edge = .trailing
     @State private var dateNavAction = DateNavAction()
     @State private var showSettings = false
+    @State private var showScanner = false
     @State private var customFoodName = ""
     @State private var customStep: CustomStep = .serving
     @State private var customServing: Float = 100
@@ -351,6 +352,11 @@ struct HomeView: View {
             SettingsView()
                 .environmentObject(authService)
         }
+        .sheet(isPresented: $showScanner) {
+            BarcodeScannerView { scannedFood in
+                handleScannedFood(scannedFood)
+            }
+        }
         .simultaneousGesture(
             DragGesture(minimumDistance: 50, coordinateSpace: .local)
                 .onEnded { value in
@@ -412,6 +418,10 @@ struct HomeView: View {
 
                 DateNavButtons(actions: dateNavAction)
 
+                BarcodeScanButton {
+                    showScanner = true
+                }
+
                 SettingsButton {
                     showSettings = true
                 }
@@ -437,7 +447,7 @@ struct HomeView: View {
                     Spacer()
 
                     let mealCal = group.reduce(0) { $0 + $1.calories }
-                    Text("\(Int(mealCal)) cal")
+                    Text("\(Int(mealCal)) kcal")
                         .font(.monoTiny)
                         .foregroundColor(.textVeryMuted)
                 }
@@ -702,6 +712,29 @@ struct HomeView: View {
     }
 
     // MARK: - Actions
+    private func handleScannedFood(_ scanned: ScannedFood) {
+        Task {
+            // Create a custom food from the scanned nutrition data (per 100g → per serving)
+            let servingCal = scanned.caloriesPer100g * scanned.servingGrams / 100
+            let servingProtein = scanned.proteinPer100g * scanned.servingGrams / 100
+            let servingCarbs = scanned.carbsPer100g * scanned.servingGrams / 100
+            let servingFat = scanned.fatPer100g * scanned.servingGrams / 100
+
+            if let food = await foodService.createCustomFood(
+                name: scanned.name,
+                servingGrams: scanned.servingGrams,
+                calories: servingCal,
+                protein: servingProtein,
+                carbs: servingCarbs,
+                fat: servingFat
+            ) {
+                await MainActor.run {
+                    selectFood(food)
+                }
+            }
+        }
+    }
+
     private func selectFood(_ food: Food) {
         pendingFood = food
         mode = .grams
