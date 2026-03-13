@@ -754,24 +754,31 @@ struct HomeView: View {
     }
 
     private func handleBackspace() {
-        guard !logService.todayEntries.isEmpty else { return }
+        let latestMeal = logService.todayEntries.map(\.mealIndex).max() ?? 0
+        let onEmptyNewMeal = currentMealIndex > latestMeal
 
-        if lastWasBackspace {
-            // Second backspace — remove the last entry in the current meal
-            if let lastEntry = logService.todayEntries.last {
-                Task {
-                    await logService.deleteEntry(lastEntry)
-                    // If we removed the last entry in a new meal, step back
-                    let latestMeal = logService.todayEntries.map(\.mealIndex).max() ?? 0
-                    if currentMealIndex > latestMeal {
-                        currentMealIndex = latestMeal
+        if onEmptyNewMeal {
+            // On an empty new meal — backspace removes the meal divider, go back
+            currentMealIndex = latestMeal
+            lastWasBackspace = false
+            lastWasEnter = false
+        } else {
+            // Has entries in current meal
+            guard !logService.todayEntries.isEmpty else { return }
+
+            if lastWasBackspace {
+                // Second backspace — remove last entry in current meal
+                let currentMealEntries = logService.todayEntries.filter { $0.mealIndex == currentMealIndex }
+                if let lastEntry = currentMealEntries.last {
+                    Task {
+                        await logService.deleteEntry(lastEntry)
                     }
                 }
+                lastWasBackspace = false
+            } else {
+                lastWasBackspace = true
+                lastWasEnter = false
             }
-            lastWasBackspace = false
-        } else {
-            lastWasBackspace = true
-            lastWasEnter = false
         }
     }
 
