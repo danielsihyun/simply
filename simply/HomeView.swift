@@ -710,6 +710,9 @@ struct HomeView: View {
             logService.todayEntries = entries
             currentMealIndex = entries.map(\.mealIndex).max() ?? 0
             selectedDate = newDate
+
+            try? await Task.sleep(nanoseconds: 100_000_000)
+            inputFocused = true
         }
     }
 
