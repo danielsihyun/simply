@@ -167,7 +167,7 @@ struct HomeView: View {
                 ScrollViewReader { proxy in
                     ScrollView {
                         VStack(alignment: .leading, spacing: 0) {
-                            // Transitioning content
+                            // Transitioning content (slides with date changes)
                             VStack(alignment: .leading, spacing: 0) {
                                 // Day summary
                                 DaySummaryView(
@@ -306,12 +306,6 @@ struct HomeView: View {
                                     .padding(.vertical, 5)
                                     .padding(.top, isFirstInMeal ? 0 : -4)
                                 }
-
-                                inputAreaView
-
-                                // Bottom padding
-                                Spacer().frame(height: 120)
-                                    .id("bottom")
                             }
                             .id(selectedDate)
                             .transition(.asymmetric(
@@ -319,6 +313,13 @@ struct HomeView: View {
                                 removal: .move(edge: slideDirection)
                             ))
                             .animation(.easeInOut(duration: 0.3), value: selectedDate)
+
+                            // Input area — outside the sliding transition so it doesn't flash
+                            inputAreaView
+
+                            // Bottom padding
+                            Spacer().frame(height: 120)
+                                .id("bottom")
                         }
                         .padding(.horizontal, 18)
                         .clipped()
@@ -710,9 +711,6 @@ struct HomeView: View {
             logService.todayEntries = entries
             currentMealIndex = entries.map(\.mealIndex).max() ?? 0
             selectedDate = newDate
-
-            try? await Task.sleep(nanoseconds: 100_000_000)
-            inputFocused = true
         }
     }
 
