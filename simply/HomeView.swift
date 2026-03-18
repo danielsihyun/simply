@@ -175,7 +175,8 @@ struct HomeView: View {
                                     protein: logService.totalProtein,
                                     carbs: logService.totalCarbs,
                                     fat: logService.totalFat,
-                                    profile: authService.profile
+                                    profile: authService.profile,
+                                    isToday: isToday
                                 )
                                 .padding(.bottom, 24)
 
@@ -704,11 +705,9 @@ struct HomeView: View {
     private func handleScanResult(_ result: ScanResult) {
         switch result {
         case .existingFood(let food):
-            // Found in local DB — go straight to grams mode
             selectFood(food)
 
         case .scannedFood(let scanned, let barcode):
-            // Found in OpenFoodFacts — create food with barcode, then grams mode
             Task {
                 let servingCal = scanned.caloriesPer100g * scanned.servingGrams / 100
                 let servingProtein = scanned.proteinPer100g * scanned.servingGrams / 100
@@ -731,7 +730,6 @@ struct HomeView: View {
             }
 
         case .notFound(let barcode):
-            // Not found — save barcode, let user type food name and enter custom flow
             pendingBarcode = barcode
             inputFocused = true
         }
@@ -784,7 +782,6 @@ struct HomeView: View {
             if let first = foodService.searchResults.first {
                 selectFood(first)
             } else if !foodService.isSearching && inputText.trimmingCharacters(in: .whitespaces).count >= 2 {
-                // No results — enter triggers custom food flow
                 startCustomFood()
             }
             lastWasEnter = false
@@ -798,7 +795,6 @@ struct HomeView: View {
         let onEmptyNewMeal = currentMealIndex > latestMeal
 
         if onEmptyNewMeal {
-            // On an empty new meal — double backspace to remove the meal divider
             if lastWasBackspace {
                 currentMealIndex = latestMeal
                 lastWasBackspace = false
@@ -807,11 +803,9 @@ struct HomeView: View {
                 lastWasEnter = false
             }
         } else {
-            // Has entries in current meal
             guard !logService.todayEntries.isEmpty else { return }
 
             if lastWasBackspace {
-                // Second backspace — remove last entry in current meal
                 let currentMealEntries = logService.todayEntries.filter { $0.mealIndex == currentMealIndex }
                 if let lastEntry = currentMealEntries.last {
                     Task {
@@ -844,7 +838,6 @@ struct HomeView: View {
         lastWasBackspace = false
         pendingBarcode = nil
 
-        // Focus after next layout pass so the search TextField is in the tree
         DispatchQueue.main.async {
             inputFocused = true
         }
@@ -878,20 +871,17 @@ struct HomeView: View {
     private func advanceCustomStep() {
         let value = Float(inputText) ?? 0
 
-        // Store value for current step
         switch customStep {
         case .serving: customServing = max(value, 1)
         case .calories: customCals = value
         case .protein: customProtein = value
         case .carbs: customCarbs = value
         case .fat:
-            // Final step — create the food and log it
             let fatValue = value
             confirmCustomFood(fat: fatValue)
             return
         }
 
-        // Advance to next step
         if let next = customStep.next {
             customStep = next
             inputText = ""
@@ -902,7 +892,6 @@ struct HomeView: View {
     private func confirmCustomFood(fat: Float) {
         guard let userId = authService.userId else { return }
 
-        // Capture values before resetting state
         let name = customFoodName
         let serving = customServing
         let cals = customCals
@@ -912,7 +901,6 @@ struct HomeView: View {
         let date = selectedDate
         let barcode = pendingBarcode
 
-        // Reset immediately so UI is responsive
         mode = .search
         customFoodName = ""
         customStep = .serving
@@ -970,6 +958,7 @@ struct DaySummaryView: View {
     let carbs: Float
     let fat: Float
     let profile: Profile?
+    let isToday: Bool
 
     private var calGoal: Float { Float(profile?.calGoal ?? 2200) }
     private var proteinGoal: Float { Float(profile?.proteinGoal ?? 160) }
@@ -977,6 +966,17 @@ struct DaySummaryView: View {
     private var fatGoal: Float { Float(profile?.fatGoal ?? 70) }
     private var remaining: Float { calGoal - cal }
     private var calPct: CGFloat { min(CGFloat(cal / calGoal), 1) }
+
+    /// Streak display: stored streak from DB (completed past days)
+    /// + 1 if viewing today and current calories are within ±100 of goal.
+    /// Zero extra queries — pure local math on data already in memory.
+    private var displayStreak: Int {
+        let base = profile?.streakCurrent ?? 0
+        if isToday && cal > 0 && abs(cal - calGoal) <= 100 {
+            return base + 1
+        }
+        return base
+    }
 
     var body: some View {
         VStack(spacing: 0) {
@@ -990,11 +990,11 @@ struct DaySummaryView: View {
                         .foregroundColor(.textMuted)
                 }
                 Spacer()
-                if let profile = profile, profile.streakCurrent > 0 {
+                if displayStreak > 0 {
                     HStack(spacing: 3) {
                         Text("🔥")
                             .font(.system(size: 13))
-                        Text("\(profile.streakCurrent)")
+                        Text("\(displayStreak)")
                             .font(.system(size: 14, weight: .semibold, design: .monospaced))
                             .foregroundColor(.streakColor)
                     }
