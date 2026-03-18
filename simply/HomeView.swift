@@ -175,7 +175,8 @@ struct HomeView: View {
                                     protein: logService.totalProtein,
                                     carbs: logService.totalCarbs,
                                     fat: logService.totalFat,
-                                    profile: authService.profile
+                                    profile: authService.profile,
+                                    viewingDate: selectedDate
                                 )
                                 .padding(.bottom, 24)
 
@@ -957,6 +958,7 @@ struct DaySummaryView: View {
     let carbs: Float
     let fat: Float
     let profile: Profile?
+    let viewingDate: Date
 
     private var calGoal: Float { Float(profile?.calGoal ?? 2200) }
     private var proteinGoal: Float { Float(profile?.proteinGoal ?? 160) }
@@ -964,6 +966,55 @@ struct DaySummaryView: View {
     private var fatGoal: Float { Float(profile?.fatGoal ?? 70) }
     private var remaining: Float { calGoal - cal }
     private var calPct: CGFloat { min(CGFloat(cal / calGoal), 1) }
+
+    /// Contextual streak for the viewed date.
+    ///
+    /// DB stores streak_current (count from today backwards) and
+    /// streak_start_date. For any viewed date:
+    ///
+    /// - Past/today within streak window:
+    ///     daysSinceStart + 1 (e.g. start=Mar16, viewing Mar17 → 2)
+    /// - Tomorrow (future):
+    ///     streak_current + 1 if this day's cals are within ±100
+    /// - Outside streak window: 0
+    private var displayStreak: Int {
+        guard let profile = profile,
+              profile.streakCurrent > 0,
+              let startDate = profile.streakStartDate else {
+            // No active streak — check if viewing tomorrow with food in range
+            if isFutureDay && cal > 0 && abs(cal - calGoal) <= 100 {
+                return 1
+            }
+            return 0
+        }
+
+        let cal = Calendar.current
+
+        if isFutureDay {
+            // Tomorrow or later: extend streak if cals are within range
+            let isNextDay = cal.isDate(
+                viewingDate,
+                inSameDayAs: cal.date(byAdding: .day, value: 1, to: Date())!
+            )
+            if isNextDay && self.cal > 0 && abs(self.cal - calGoal) <= 100 {
+                return profile.streakCurrent + 1
+            }
+            return 0
+        }
+
+        // Past or today: check if viewingDate falls within [startDate, today]
+        let startOfStart = cal.startOfDay(for: startDate)
+        let startOfViewing = cal.startOfDay(for: viewingDate)
+
+        guard startOfViewing >= startOfStart else { return 0 }
+
+        let days = cal.dateComponents([.day], from: startOfStart, to: startOfViewing).day ?? 0
+        return days + 1
+    }
+
+    private var isFutureDay: Bool {
+        Calendar.current.startOfDay(for: viewingDate) > Calendar.current.startOfDay(for: Date())
+    }
 
     var body: some View {
         VStack(spacing: 0) {
@@ -977,11 +1028,11 @@ struct DaySummaryView: View {
                         .foregroundColor(.textMuted)
                 }
                 Spacer()
-                if let profile = profile, profile.streakCurrent > 0 {
+                if displayStreak > 0 {
                     HStack(spacing: 3) {
                         Text("🔥")
                             .font(.system(size: 13))
-                        Text("\(profile.streakCurrent)")
+                        Text("\(displayStreak)")
                             .font(.system(size: 14, weight: .semibold, design: .monospaced))
                             .foregroundColor(.streakColor)
                     }
