@@ -404,20 +404,6 @@ struct HomeView: View {
             Spacer()
 
             HStack(spacing: 8) {
-                if let profile = authService.profile, profile.streakCurrent > 0 {
-                    HStack(spacing: 2) {
-                        Text("🔥")
-                            .font(.system(size: 12))
-                        Text("\(profile.streakCurrent)")
-                            .font(.system(size: 12, weight: .semibold))
-                            .foregroundColor(.streakColor)
-                    }
-                    .padding(.horizontal, 10)
-                    .padding(.vertical, 5)
-                    .background(Color.bgStreakBadge)
-                    .cornerRadius(10)
-                }
-
                 DateNavButtons(actions: dateNavAction)
 
                 BarcodeScanButton {
@@ -1004,6 +990,15 @@ struct DaySummaryView: View {
                         .foregroundColor(.textMuted)
                 }
                 Spacer()
+                if let profile = profile, profile.streakCurrent > 0 {
+                    HStack(spacing: 3) {
+                        Text("🔥")
+                            .font(.system(size: 13))
+                        Text("\(profile.streakCurrent)")
+                            .font(.system(size: 14, weight: .semibold, design: .monospaced))
+                            .foregroundColor(.streakColor)
+                    }
+                }
             }
             .padding(.bottom, 8)
 
