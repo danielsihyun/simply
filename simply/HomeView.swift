@@ -175,8 +175,7 @@ struct HomeView: View {
                                     protein: logService.totalProtein,
                                     carbs: logService.totalCarbs,
                                     fat: logService.totalFat,
-                                    profile: authService.profile,
-                                    isToday: isToday
+                                    profile: authService.profile
                                 )
                                 .padding(.bottom, 24)
 
@@ -958,7 +957,6 @@ struct DaySummaryView: View {
     let carbs: Float
     let fat: Float
     let profile: Profile?
-    let isToday: Bool
 
     private var calGoal: Float { Float(profile?.calGoal ?? 2200) }
     private var proteinGoal: Float { Float(profile?.proteinGoal ?? 160) }
@@ -966,17 +964,6 @@ struct DaySummaryView: View {
     private var fatGoal: Float { Float(profile?.fatGoal ?? 70) }
     private var remaining: Float { calGoal - cal }
     private var calPct: CGFloat { min(CGFloat(cal / calGoal), 1) }
-
-    /// Streak display: stored streak from DB (completed past days)
-    /// + 1 if viewing today and current calories are within ±100 of goal.
-    /// Zero extra queries — pure local math on data already in memory.
-    private var displayStreak: Int {
-        let base = profile?.streakCurrent ?? 0
-        if isToday && cal > 0 && abs(cal - calGoal) <= 100 {
-            return base + 1
-        }
-        return base
-    }
 
     var body: some View {
         VStack(spacing: 0) {
@@ -990,11 +977,11 @@ struct DaySummaryView: View {
                         .foregroundColor(.textMuted)
                 }
                 Spacer()
-                if displayStreak > 0 {
+                if let profile = profile, profile.streakCurrent > 0 {
                     HStack(spacing: 3) {
                         Text("🔥")
                             .font(.system(size: 13))
-                        Text("\(displayStreak)")
+                        Text("\(profile.streakCurrent)")
                             .font(.system(size: 14, weight: .semibold, design: .monospaced))
                             .foregroundColor(.streakColor)
                     }
