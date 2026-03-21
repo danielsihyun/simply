@@ -773,6 +773,7 @@ struct HomeView: View {
 
         Task {
             await logService.addEntry(userId: userId, food: food, grams: grams, mealIndex: currentMealIndex, date: selectedDate)
+            await authService.loadProfile()
         }
 
         pendingFood = nil
@@ -872,6 +873,7 @@ struct HomeView: View {
                     mealIndex: meal,
                     date: date
                 )
+                await authService.loadProfile()
             }
         }
     }
@@ -923,11 +925,11 @@ struct DaySummaryView: View {
                         .foregroundColor(.textMuted)
                 }
                 Spacer()
-                if let profile = profile, profile.streakCurrent > 0 {
+                if let profile = profile, profile.effectiveStreak > 0 {
                     HStack(spacing: 3) {
                         Text("🔥")
                             .font(.system(size: 13))
-                        Text("\(profile.streakCurrent)")
+                        Text("\(profile.effectiveStreak)")
                             .font(.system(size: 14, weight: .semibold, design: .monospaced))
                             .foregroundColor(.streakColor)
                     }
