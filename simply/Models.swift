@@ -60,6 +60,23 @@ struct Profile: Codable {
         case streakLongest = "streak_longest"
         case streakLastLogDate = "streak_last_log_date"
     }
+
+    /// Returns 0 if the streak is stale (last log older than yesterday)
+    var effectiveStreak: Int {
+        guard let dateString = streakLastLogDate else { return 0 }
+
+        let formatter = DateFormatter()
+        formatter.dateFormat = "yyyy-MM-dd"
+        formatter.timeZone = .current
+
+        guard let lastLog = formatter.date(from: dateString) else { return 0 }
+
+        let cal = Calendar.current
+        if cal.isDateInToday(lastLog) || cal.isDateInYesterday(lastLog) {
+            return streakCurrent
+        }
+        return 0
+    }
 }
 
 // MARK: - Food Log Entry
