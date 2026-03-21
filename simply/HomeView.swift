@@ -393,6 +393,7 @@ struct HomeView: View {
                     FoodEntryRow(entry: entry) {
                         Task {
                             await logService.deleteEntry(entry)
+                            await authService.loadProfile()
                         }
                     }
                 }
@@ -755,6 +756,7 @@ struct HomeView: View {
                 if let lastEntry = currentMealEntries.last {
                     Task {
                         await logService.deleteEntry(lastEntry)
+                        await authService.loadProfile()
                     }
                 }
                 lastWasBackspace = false
