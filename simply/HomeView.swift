@@ -1,51 +1,6 @@
 import SwiftUI
 import Combine
 
-// MARK: - Date Nav Action Holder (reference type — prevents SwiftUI re-renders)
-class DateNavAction {
-    var selectedDate = Date()
-    var onNavigate: ((Date, Edge) -> Void) = { _, _ in }
-
-    func goBack() {
-        let newDate = Calendar.current.date(byAdding: .day, value: -1, to: selectedDate) ?? selectedDate
-        onNavigate(newDate, .trailing)
-    }
-
-    func goForward() {
-        let cal = Calendar.current
-        let tomorrow = cal.date(byAdding: .day, value: 1, to: Date())!
-        guard !cal.isDate(selectedDate, inSameDayAs: tomorrow) else { return }
-        let newDate = cal.date(byAdding: .day, value: 1, to: selectedDate) ?? selectedDate
-        onNavigate(newDate, .leading)
-    }
-}
-
-// MARK: - Date Navigation Buttons (native Liquid Glass)
-struct DateNavButtons: View {
-    let actions: DateNavAction
-    @Namespace private var ns
-
-    var body: some View {
-        GlassEffectContainer {
-            HStack(spacing: 0) {
-                Button { actions.goBack() } label: {
-                    Image(systemName: "chevron.left")
-                        .frame(width: 24, height: 30)
-                }
-                .buttonStyle(.glass)
-                .glassEffectUnion(id: "dateNav", namespace: ns)
-
-                Button { actions.goForward() } label: {
-                    Image(systemName: "chevron.right")
-                        .frame(width: 24, height: 30)
-                }
-                .buttonStyle(.glass)
-                .glassEffectUnion(id: "dateNav", namespace: ns)
-            }
-        }
-    }
-}
-
 // MARK: - Settings Button (standalone Liquid Glass)
 struct SettingsButton: View {
     let action: () -> Void
@@ -76,7 +31,6 @@ struct HomeView: View {
     @State private var suppressUndo = false
     @State private var selectedDate = Date()
     @State private var slideDirection: Edge = .trailing
-    @State private var dateNavAction = DateNavAction()
     @State private var showSettings = false
     @State private var showScanner = false
     @State private var customFoodName = ""
@@ -336,11 +290,6 @@ struct HomeView: View {
             }
         }
         .task {
-            dateNavAction.onNavigate = { [self] newDate, direction in
-                navigateToDate(newDate, direction: direction)
-            }
-            dateNavAction.selectedDate = selectedDate
-
             if let userId = authService.userId {
                 await logService.loadEntries(userId: userId, date: selectedDate)
                 currentMealIndex = logService.todayEntries.map(\.mealIndex).max() ?? 0
@@ -404,8 +353,6 @@ struct HomeView: View {
             Spacer()
 
             HStack(spacing: 8) {
-                DateNavButtons(actions: dateNavAction)
-
                 BarcodeScanButton {
                     showScanner = true
                 }
@@ -680,7 +627,6 @@ struct HomeView: View {
     private func navigateToDate(_ newDate: Date, direction: Edge) {
         guard let userId = authService.userId else { return }
         slideDirection = direction
-        dateNavAction.selectedDate = newDate
 
         inputText = ""
         mode = .search
