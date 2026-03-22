@@ -25,7 +25,7 @@ struct MacroStackEntry: Identifiable {
 // MARK: - Analytics View
 struct AnalyticsView: View {
     @EnvironmentObject var authService: AuthService
-    @Environment(\.dismiss) private var dismiss
+    @Environment(\.dismiss) var dismiss
 
     @State private var days: [DayMacroData] = []
     @State private var stackEntries: [MacroStackEntry] = []
@@ -37,48 +37,48 @@ struct AnalyticsView: View {
     private var longestStreak: Int { authService.profile?.streakLongest ?? 0 }
 
     var body: some View {
-        NavigationStack {
-            ScrollView {
-                VStack(alignment: .leading, spacing: 24) {
-                    // Streak header
-                    streakHeader
-                        .padding(.horizontal, 18)
+        ZStack {
+            Color.bgPrimary.ignoresSafeArea()
 
-                    // Chart
-                    if isLoading {
-                        ProgressView()
-                            .frame(maxWidth: .infinity, minHeight: 220)
-                    } else if days.isEmpty {
-                        Text("No data yet — start logging to see your trends.")
-                            .font(.system(size: 14))
-                            .foregroundColor(.textMuted)
-                            .frame(maxWidth: .infinity, minHeight: 220)
-                    } else {
-                        calorieChart
-                            .padding(.horizontal, 18)
-
-                        // Selected day detail
-                        if let day = selectedDay {
-                            selectedDayDetail(day)
-                                .padding(.horizontal, 18)
-                        }
-
-                        // Legend
-                        legendView
-                            .padding(.horizontal, 18)
-                    }
-
-                    Spacer().frame(height: 40)
-                }
-                .padding(.top, 16)
-            }
-            .background(Color.bgPrimary.ignoresSafeArea())
-            .navigationTitle("Analytics")
-            .navigationBarTitleDisplayMode(.inline)
-            .toolbar {
-                ToolbarItem(placement: .topBarTrailing) {
-                    Button("Done") { dismiss() }
+            VStack(alignment: .leading, spacing: 0) {
+                // Header — matches SettingsView
+                HStack {
+                    Text("Analytics")
+                        .font(.headerDay)
                         .foregroundColor(.white)
+                        .tracking(-0.8)
+
+                    Spacer()
+
+                    Button("Done") { dismiss() }
+                        .font(.system(size: 15, weight: .semibold))
+                        .foregroundColor(.calBarBlue)
+                }
+                .padding(.horizontal, 18)
+                .padding(.top, 16)
+                .padding(.bottom, 24)
+
+                ScrollView {
+                    VStack(alignment: .leading, spacing: 16) {
+                        // Streak card
+                        streakCard
+
+                        // Chart card
+                        if isLoading {
+                            loadingCard
+                        } else if days.isEmpty {
+                            emptyCard
+                        } else {
+                            chartCard
+
+                            // Selected day breakdown
+                            if let day = selectedDay {
+                                breakdownCard(day)
+                            }
+                        }
+                    }
+                    .padding(.horizontal, 18)
+                    .padding(.bottom, 40)
                 }
             }
         }
@@ -87,100 +87,144 @@ struct AnalyticsView: View {
         }
     }
 
-    // MARK: - Streak header
-    private var streakHeader: some View {
-        HStack(spacing: 24) {
-            VStack(spacing: 4) {
-                HStack(spacing: 4) {
+    // MARK: - Streak card
+    private var streakCard: some View {
+        VStack(alignment: .leading, spacing: 0) {
+            Text("STREAK")
+                .font(.system(size: 11, weight: .semibold))
+                .foregroundColor(.textMuted)
+                .tracking(0.8)
+                .padding(.bottom, 12)
+
+            HStack(spacing: 0) {
+                // Current
+                HStack(spacing: 5) {
                     Text("🔥")
-                        .font(.system(size: 22))
+                        .font(.system(size: 20))
                     Text("\(streak)")
-                        .font(.system(size: 28, weight: .bold, design: .monospaced))
+                        .font(.system(size: 28, weight: .medium, design: .monospaced))
                         .foregroundColor(.streakColor)
                 }
-                Text("current streak")
-                    .font(.system(size: 11))
-                    .foregroundColor(.textMuted)
-                    .textCase(.uppercase)
-                    .tracking(0.5)
+
+                Spacer()
+
+                Rectangle()
+                    .fill(Color.white.opacity(0.04))
+                    .frame(width: 1, height: 32)
+
+                Spacer()
+
+                // Longest
+                VStack(alignment: .trailing, spacing: 2) {
+                    Text("\(longestStreak)")
+                        .font(.system(size: 28, weight: .medium, design: .monospaced))
+                        .foregroundColor(.white.opacity(0.4))
+                    Text("longest")
+                        .font(.system(size: 10, weight: .medium))
+                        .foregroundColor(.textVeryMuted)
+                }
             }
-
-            Rectangle()
-                .fill(Color.white.opacity(0.06))
-                .frame(width: 1, height: 36)
-
-            VStack(spacing: 4) {
-                Text("\(longestStreak)")
-                    .font(.system(size: 28, weight: .bold, design: .monospaced))
-                    .foregroundColor(.white.opacity(0.5))
-                Text("longest streak")
-                    .font(.system(size: 11))
-                    .foregroundColor(.textMuted)
-                    .textCase(.uppercase)
-                    .tracking(0.5)
-            }
-
-            Spacer()
         }
-        .padding(.vertical, 14)
         .padding(.horizontal, 16)
+        .padding(.vertical, 14)
         .background(Color.bgCard)
         .cornerRadius(14)
     }
 
-    // MARK: - Calorie chart with stacked macro areas
-    private var calorieChart: some View {
-        VStack(alignment: .leading, spacing: 8) {
-            Text("Calories")
-                .font(.system(size: 13, weight: .medium))
-                .foregroundColor(.textSecondary)
-                .textCase(.uppercase)
-                .tracking(0.6)
+    // MARK: - Loading card
+    private var loadingCard: some View {
+        VStack {
+            ProgressView()
+                .tint(.textMuted)
+        }
+        .frame(maxWidth: .infinity, minHeight: 220)
+        .background(Color.bgCard)
+        .cornerRadius(14)
+    }
 
+    // MARK: - Empty card
+    private var emptyCard: some View {
+        VStack(spacing: 6) {
+            Text("No data yet")
+                .font(.system(size: 14))
+                .foregroundColor(.textMuted)
+            Text("Start logging to see your trends")
+                .font(.system(size: 12))
+                .foregroundColor(.textVeryMuted)
+        }
+        .frame(maxWidth: .infinity, minHeight: 220)
+        .background(Color.bgCard)
+        .cornerRadius(14)
+    }
+
+    // MARK: - Chart card
+    private var chartCard: some View {
+        VStack(alignment: .leading, spacing: 0) {
+            HStack {
+                Text("CALORIES")
+                    .font(.system(size: 11, weight: .semibold))
+                    .foregroundColor(.textMuted)
+                    .tracking(0.8)
+
+                Spacer()
+
+                // Legend
+                HStack(spacing: 10) {
+                    legendDot("Protein", color: .proteinColor)
+                    legendDot("Carbs", color: .carbColor)
+                    legendDot("Fat", color: .fatColor)
+                }
+            }
+            .padding(.bottom, 14)
+
+            // Chart
             Chart {
                 // Goal line
                 RuleMark(y: .value("Goal", calGoal))
                     .lineStyle(StrokeStyle(lineWidth: 1, dash: [4, 4]))
-                    .foregroundStyle(.white.opacity(0.15))
-                    .annotation(position: .topTrailing, alignment: .trailing) {
-                        Text("goal")
-                            .font(.system(size: 9))
-                            .foregroundColor(.textVeryMuted)
-                    }
+                    .foregroundStyle(.white.opacity(0.12))
 
-                // Stacked areas — draw fat first (bottom), then carbs, then protein (top)
+                // Stacked areas — fat bottom, carbs middle, protein top
                 ForEach(stackEntries) { entry in
                     AreaMark(
                         x: .value("Date", entry.date, unit: .day),
                         yStart: .value("Base", entry.stackBase),
                         yEnd: .value("Top", entry.stackTop)
                     )
-                    .foregroundStyle(colorForMacro(entry.macro).opacity(0.45))
+                    .foregroundStyle(colorForMacro(entry.macro).opacity(0.4))
                     .interpolationMethod(.catmullRom)
+                }
 
+                // Top line (total calories)
+                ForEach(days) { day in
                     LineMark(
-                        x: .value("Date", entry.date, unit: .day),
-                        y: .value("Top", entry.stackTop)
+                        x: .value("Date", day.date, unit: .day),
+                        y: .value("Cal", day.proteinCal + day.carbCal + day.fatCal)
                     )
-                    .foregroundStyle(colorForMacro(entry.macro).opacity(
-                        entry.macro == "Protein" ? 0.7 : 0.0
-                    ))
+                    .foregroundStyle(.white.opacity(0.5))
                     .interpolationMethod(.catmullRom)
-                    .lineStyle(StrokeStyle(lineWidth: entry.macro == "Protein" ? 2 : 0))
+                    .lineStyle(StrokeStyle(lineWidth: 1.5))
+                }
+
+                // Selected day indicator
+                if let sel = selectedDay {
+                    RuleMark(x: .value("Sel", sel.date, unit: .day))
+                        .lineStyle(StrokeStyle(lineWidth: 1))
+                        .foregroundStyle(.white.opacity(0.15))
                 }
             }
-            .chartYScale(domain: 0 ... max(calGoal * 1.3, (days.map(\.totalCal).max() ?? calGoal) * 1.15))
+            .chartYScale(domain: 0 ... chartYMax)
             .chartXAxis {
                 AxisMarks(values: .stride(by: .day)) { value in
                     AxisValueLabel {
                         if let date = value.as(Date.self) {
                             Text(shortDateLabel(date))
                                 .font(.system(size: 9))
-                                .foregroundColor(.textMuted)
+                                .foregroundColor(.textVeryMuted)
                         }
                     }
                     AxisGridLine()
-                        .foregroundStyle(.white.opacity(0.04))
+                        .foregroundStyle(.white.opacity(0.03))
                 }
             }
             .chartYAxis {
@@ -193,7 +237,7 @@ struct AnalyticsView: View {
                         }
                     }
                     AxisGridLine()
-                        .foregroundStyle(.white.opacity(0.04))
+                        .foregroundStyle(.white.opacity(0.03))
                 }
             }
             .chartOverlay { proxy in
@@ -212,105 +256,136 @@ struct AnalyticsView: View {
                                         }
                                     }
                                 }
-                                .onEnded { _ in }
                         )
                 }
             }
-            .frame(height: 220)
+            .frame(height: 200)
         }
-        .padding(14)
+        .padding(.horizontal, 16)
+        .padding(.vertical, 14)
         .background(Color.bgCard)
         .cornerRadius(14)
     }
 
-    // MARK: - Selected day detail
-    private func selectedDayDetail(_ day: DayMacroData) -> some View {
-        VStack(spacing: 10) {
+    private var chartYMax: Float {
+        let dataMax = days.map { $0.proteinCal + $0.carbCal + $0.fatCal }.max() ?? calGoal
+        return max(calGoal, dataMax) * 1.2
+    }
+
+    // MARK: - Breakdown card for selected day
+    private func breakdownCard(_ day: DayMacroData) -> some View {
+        VStack(alignment: .leading, spacing: 0) {
             HStack {
-                Text(fullDateLabel(day.date))
-                    .font(.system(size: 13, weight: .medium))
-                    .foregroundColor(.textPrimary)
+                Text(fullDateLabel(day.date).uppercased())
+                    .font(.system(size: 11, weight: .semibold))
+                    .foregroundColor(.textMuted)
+                    .tracking(0.8)
+
                 Spacer()
-                Text("\(Int(day.totalCal)) cal")
-                    .font(.system(size: 14, weight: .semibold, design: .monospaced))
-                    .foregroundColor(.white)
-            }
 
-            HStack(spacing: 0) {
-                let total = max(day.proteinCal + day.carbCal + day.fatCal, 1)
-                macroSegment(
-                    label: "\(Int(day.proteinCal / 4))g protein",
-                    fraction: CGFloat(day.proteinCal / total),
-                    color: .proteinColor
-                )
-                macroSegment(
-                    label: "\(Int(day.carbCal / 4))g carbs",
-                    fraction: CGFloat(day.carbCal / total),
-                    color: .carbColor
-                )
-                macroSegment(
-                    label: "\(Int(day.fatCal / 9))g fat",
-                    fraction: CGFloat(day.fatCal / total),
-                    color: .fatColor
-                )
+                HStack(spacing: 3) {
+                    Text("\(Int(day.totalCal))")
+                        .font(.system(size: 14, weight: .semibold, design: .monospaced))
+                        .foregroundColor(.white)
+                    Text("cal")
+                        .font(.system(size: 11))
+                        .foregroundColor(.textMuted)
+                }
             }
-            .frame(height: 6)
-            .clipShape(Capsule())
+            .padding(.bottom, 14)
 
-            HStack(spacing: 16) {
-                macroStat("Protein", grams: day.proteinCal / 4, cals: day.proteinCal, color: .proteinColor)
-                macroStat("Carbs", grams: day.carbCal / 4, cals: day.carbCal, color: .carbColor)
-                macroStat("Fat", grams: day.fatCal / 9, cals: day.fatCal, color: .fatColor)
-            }
+            // Stacked bar — same style as SettingsView
+            stackedBar(day)
+                .padding(.bottom, 16)
+
+            // Macro rows — same divider pattern as SettingsView
+            macroRow(
+                label: "Protein",
+                grams: day.proteinCal / 4,
+                cals: day.proteinCal,
+                color: .proteinColor
+            )
+
+            Rectangle()
+                .fill(Color.white.opacity(0.04))
+                .frame(height: 1)
+                .padding(.vertical, 10)
+
+            macroRow(
+                label: "Carbs",
+                grams: day.carbCal / 4,
+                cals: day.carbCal,
+                color: .carbColor
+            )
+
+            Rectangle()
+                .fill(Color.white.opacity(0.04))
+                .frame(height: 1)
+                .padding(.vertical, 10)
+
+            macroRow(
+                label: "Fat",
+                grams: day.fatCal / 9,
+                cals: day.fatCal,
+                color: .fatColor
+            )
         }
-        .padding(14)
+        .padding(.horizontal, 16)
+        .padding(.vertical, 14)
         .background(Color.bgCard)
         .cornerRadius(14)
     }
 
-    private func macroSegment(label: String, fraction: CGFloat, color: Color) -> some View {
-        GeometryReader { geo in
-            Rectangle()
-                .fill(color.opacity(0.7))
-                .frame(width: geo.size.width * fraction)
-        }
-    }
-
-    private func macroStat(_ label: String, grams: Float, cals: Float, color: Color) -> some View {
-        VStack(spacing: 2) {
-            HStack(spacing: 3) {
-                Text("\(Int(grams))g")
-                    .font(.system(size: 13, weight: .semibold, design: .monospaced))
-                    .foregroundColor(color)
+    private func stackedBar(_ day: DayMacroData) -> some View {
+        let total = max(day.proteinCal + day.carbCal + day.fatCal, 1)
+        return GeometryReader { geo in
+            HStack(spacing: 1.5) {
+                RoundedRectangle(cornerRadius: 3)
+                    .fill(Color.proteinColor.opacity(0.8))
+                    .frame(width: max(geo.size.width * CGFloat(day.proteinCal / total), 4))
+                RoundedRectangle(cornerRadius: 3)
+                    .fill(Color.carbColor.opacity(0.8))
+                    .frame(width: max(geo.size.width * CGFloat(day.carbCal / total), 4))
+                RoundedRectangle(cornerRadius: 3)
+                    .fill(Color.fatColor.opacity(0.8))
+                    .frame(width: max(geo.size.width * CGFloat(day.fatCal / total), 4))
             }
-            Text("\(Int(cals)) cal")
-                .font(.system(size: 10, design: .monospaced))
-                .foregroundColor(.textVeryMuted)
+        }
+        .frame(height: 6)
+    }
+
+    // Macro row — mirrors SettingsView's slider row layout (label left, values right)
+    private func macroRow(label: String, grams: Float, cals: Float, color: Color) -> some View {
+        HStack {
             Text(label)
-                .font(.system(size: 10))
-                .foregroundColor(.textMuted)
-        }
-        .frame(maxWidth: .infinity)
-    }
+                .font(.system(size: 15))
+                .foregroundColor(.textPrimary)
 
-    // MARK: - Legend
-    private var legendView: some View {
-        HStack(spacing: 16) {
-            legendDot("Protein", color: .proteinColor)
-            legendDot("Carbs", color: .carbColor)
-            legendDot("Fat", color: .fatColor)
             Spacer()
+
+            HStack(spacing: 3) {
+                Text("\(Int(cals))")
+                    .font(.system(size: 14, weight: .semibold, design: .monospaced))
+                    .foregroundColor(color)
+                Text("·")
+                    .font(.system(size: 12))
+                    .foregroundColor(.white.opacity(0.1))
+                Text("\(Int(grams))g")
+                    .font(.system(size: 13, weight: .medium, design: .monospaced))
+                    .foregroundColor(.white.opacity(0.5))
+            }
         }
     }
 
+    // MARK: - Legend dot
     private func legendDot(_ label: String, color: Color) -> some View {
-        HStack(spacing: 5) {
+        HStack(spacing: 4) {
             Circle()
                 .fill(color.opacity(0.7))
-                .frame(width: 6, height: 6)
+                .frame(width: 5, height: 5)
             Text(label)
-                .font(.system(size: 11))
-                .foregroundColor(.textMuted)
+                .font(.system(size: 10))
+                .foregroundColor(.textVeryMuted)
         }
     }
 
@@ -346,24 +421,6 @@ struct AnalyticsView: View {
         guard let userId = authService.userId else { return }
 
         do {
-            struct DayRow: Decodable {
-                let logDate: String
-                let totalCal: Float
-                let totalProtein: Float
-                let totalCarbs: Float
-                let totalFat: Float
-
-                enum CodingKeys: String, CodingKey {
-                    case logDate = "log_date"
-                    case totalCal = "total_cal"
-                    case totalProtein = "total_protein"
-                    case totalCarbs = "total_carbs"
-                    case totalFat = "total_fat"
-                }
-            }
-
-            // Fetch last 14 days of aggregated data using RPC or raw query via the food_log table
-            // We'll aggregate client-side from food_log entries
             let entries: [FoodLogEntry] = try await supabase
                 .from("food_log")
                 .select()
@@ -373,7 +430,6 @@ struct AnalyticsView: View {
                 .execute()
                 .value
 
-            // Group by date
             let formatter = DateFormatter()
             formatter.dateFormat = "yyyy-MM-dd"
             formatter.timeZone = .current
@@ -388,35 +444,33 @@ struct AnalyticsView: View {
                 grouped[entry.logDate] = current
             }
 
-            // Build day data, filling in empty days with zeros
-            var result: [DayMacroData] = []
             let cal = Calendar.current
+            var result: [DayMacroData] = []
             for daysAgo in stride(from: 13, through: 0, by: -1) {
                 let date = cal.date(byAdding: .day, value: -daysAgo, to: cal.startOfDay(for: Date()))!
                 let key = formatter.string(from: date)
-                let data = grouped[key]
-                let proteinCal = (data?.protein ?? 0) * 4
-                let carbCal = (data?.carbs ?? 0) * 4
-                let fatCal = (data?.fat ?? 0) * 9
+                guard let data = grouped[key] else { continue }
+
+                let proteinCal = data.protein * 4
+                let carbCal = data.carbs * 4
+                let fatCal = data.fat * 9
 
                 result.append(DayMacroData(
                     date: date,
-                    totalCal: data?.cal ?? 0,
+                    totalCal: data.cal,
                     proteinCal: proteinCal,
                     carbCal: carbCal,
                     fatCal: fatCal
                 ))
             }
 
-            // Build stacked entries: fat on bottom, carbs in middle, protein on top
             var stacked: [MacroStackEntry] = []
             for day in result {
-                let fatBase: Float = 0
-                let fatTop = fatBase + day.fatCal
+                let fatTop = day.fatCal
                 let carbTop = fatTop + day.carbCal
                 let proteinTop = carbTop + day.proteinCal
 
-                stacked.append(MacroStackEntry(date: day.date, macro: "Fat", caloriesFrom: day.fatCal, stackBase: fatBase, stackTop: fatTop))
+                stacked.append(MacroStackEntry(date: day.date, macro: "Fat", caloriesFrom: day.fatCal, stackBase: 0, stackTop: fatTop))
                 stacked.append(MacroStackEntry(date: day.date, macro: "Carbs", caloriesFrom: day.carbCal, stackBase: fatTop, stackTop: carbTop))
                 stacked.append(MacroStackEntry(date: day.date, macro: "Protein", caloriesFrom: day.proteinCal, stackBase: carbTop, stackTop: proteinTop))
             }
@@ -425,7 +479,6 @@ struct AnalyticsView: View {
                 self.days = result
                 self.stackEntries = stacked
                 self.isLoading = false
-                // Auto-select today
                 self.selectedDay = result.last
             }
         } catch {
