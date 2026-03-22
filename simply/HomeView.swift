@@ -15,21 +15,15 @@ struct SettingsButton: View {
     }
 }
 
-// MARK: - Streak Button (Liquid Glass)
-struct StreakButton: View {
-    let streak: Int
+// MARK: - Analytics Button (Liquid Glass)
+struct AnalyticsButton: View {
     let action: () -> Void
 
     var body: some View {
         Button(action: action) {
-            HStack(spacing: 2) {
-                Text("🔥")
-                    .font(.system(size: 11))
-                Text("\(streak)")
-                    .font(.system(size: 13, weight: .semibold, design: .monospaced))
-                    .foregroundColor(.streakColor)
-            }
-            .frame(width: 30, height: 30)
+            Image(systemName: "chart.bar.fill")
+                .font(.system(size: 14, weight: .medium))
+                .frame(width: 30, height: 30)
         }
         .buttonStyle(.glass)
     }
@@ -378,10 +372,8 @@ struct HomeView: View {
             Spacer()
 
             HStack(spacing: 8) {
-                if let profile = authService.profile, profile.effectiveStreak > 0 {
-                    StreakButton(streak: profile.effectiveStreak) {
-                        showAnalytics = true
-                    }
+                AnalyticsButton {
+                    showAnalytics = true
                 }
 
                 BarcodeScanButton {
