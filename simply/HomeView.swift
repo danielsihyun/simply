@@ -15,6 +15,24 @@ struct SettingsButton: View {
     }
 }
 
+// MARK: - Streak Button (Liquid Glass)
+struct StreakButton: View {
+    let streak: Int
+
+    var body: some View {
+        HStack(spacing: 3) {
+            Text("🔥")
+                .font(.system(size: 13))
+            Text("\(streak)")
+                .font(.system(size: 14, weight: .semibold, design: .monospaced))
+                .foregroundColor(.streakColor)
+        }
+        .frame(height: 30)
+        .padding(.horizontal, 6)
+        .glassEffect(.regular.interactive())
+    }
+}
+
 
 // MARK: - Main View
 struct HomeView: View {
@@ -353,6 +371,10 @@ struct HomeView: View {
             Spacer()
 
             HStack(spacing: 8) {
+                if let profile = authService.profile, profile.effectiveStreak > 0 {
+                    StreakButton(streak: profile.effectiveStreak)
+                }
+
                 BarcodeScanButton {
                     showScanner = true
                 }
@@ -927,15 +949,6 @@ struct DaySummaryView: View {
                         .foregroundColor(.textMuted)
                 }
                 Spacer()
-                if let profile = profile, profile.effectiveStreak > 0 {
-                    HStack(spacing: 3) {
-                        Text("🔥")
-                            .font(.system(size: 13))
-                        Text("\(profile.effectiveStreak)")
-                            .font(.system(size: 14, weight: .semibold, design: .monospaced))
-                            .foregroundColor(.streakColor)
-                    }
-                }
             }
             .padding(.bottom, 8)
 
