@@ -18,9 +18,10 @@ struct SettingsButton: View {
 // MARK: - Streak Button (Liquid Glass)
 struct StreakButton: View {
     let streak: Int
+    let action: () -> Void
 
     var body: some View {
-        Button(action: {}) {
+        Button(action: action) {
             HStack(spacing: 2) {
                 Text("🔥")
                     .font(.system(size: 11))
@@ -52,6 +53,7 @@ struct HomeView: View {
     @State private var slideDirection: Edge = .trailing
     @State private var showSettings = false
     @State private var showScanner = false
+    @State private var showAnalytics = false
     @State private var customFoodName = ""
     @State private var customStep: CustomStep = .serving
     @State private var customServing: Float = 100
@@ -327,6 +329,10 @@ struct HomeView: View {
                 handleScanResult(result)
             }
         }
+        .sheet(isPresented: $showAnalytics) {
+            AnalyticsView()
+                .environmentObject(authService)
+        }
         .simultaneousGesture(
             DragGesture(minimumDistance: 50, coordinateSpace: .local)
                 .onEnded { value in
@@ -373,7 +379,9 @@ struct HomeView: View {
 
             HStack(spacing: 8) {
                 if let profile = authService.profile, profile.effectiveStreak > 0 {
-                    StreakButton(streak: profile.effectiveStreak)
+                    StreakButton(streak: profile.effectiveStreak) {
+                        showAnalytics = true
+                    }
                 }
 
                 BarcodeScanButton {
