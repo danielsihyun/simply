@@ -72,7 +72,7 @@ struct Profile: Codable {
         guard let lastLog = formatter.date(from: dateString) else { return 0 }
 
         let cal = Calendar.current
-        if cal.isDateInToday(lastLog) || cal.isDateInYesterday(lastLog) {
+        if cal.isDateInToday(lastLog) || cal.isDateInYesterday(lastLog) || cal.isDateInTomorrow(lastLog) {
             return streakCurrent
         }
         return 0
