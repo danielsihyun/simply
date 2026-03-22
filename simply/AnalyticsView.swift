@@ -20,9 +20,6 @@ struct AnalyticsView: View {
 
     private var calGoal: Float { Float(authService.profile?.calGoal ?? 2200) }
 
-    // Fixed order so Swift Charts stacks consistently
-    private let macroOrder = ["Fat", "Carbs", "Protein"]
-
     var body: some View {
         ZStack {
             Color.bgPrimary.ignoresSafeArea()
@@ -124,10 +121,10 @@ struct AnalyticsView: View {
             ])
             .chartYScale(domain: 0 ... chartYMax)
             .chartXAxis {
-                AxisMarks(values: .stride(by: .day, count: 2)) { value in
-                    AxisValueLabel {
+                AxisMarks(values: xAxisDates) { value in
+                    AxisValueLabel(anchor: value.index == 4 ? .topTrailing : .top) {
                         if let date = value.as(Date.self) {
-                            Text(shortDateLabel(date))
+                            Text(xAxisLabel(date))
                                 .font(.system(size: 9))
                                 .foregroundColor(.textVeryMuted)
                         }
@@ -151,15 +148,6 @@ struct AnalyticsView: View {
             }
             .chartLegend(.hidden)
             .frame(height: 240)
-
-            // Goal label
-            HStack {
-                Spacer()
-                Text("goal: \(Int(calGoal)) cal")
-                    .font(.system(size: 10, design: .monospaced))
-                    .foregroundColor(.textVeryMuted)
-            }
-            .padding(.top, 6)
         }
         .padding(.horizontal, 16)
         .padding(.vertical, 14)
@@ -168,13 +156,27 @@ struct AnalyticsView: View {
     }
 
     private var chartYMax: Float {
-        // Sum calories per day to find the peak
         var dailyTotals: [Date: Float] = [:]
         for entry in chartEntries {
             dailyTotals[entry.date, default: 0] += entry.calories
         }
         let dataMax = dailyTotals.values.max() ?? calGoal
         return max(calGoal, dataMax) * 1.15
+    }
+
+    // X-axis tick dates — every 7 days including today
+    private var xAxisDates: [Date] {
+        let cal = Calendar.current
+        let today = cal.startOfDay(for: Date())
+        return [28, 21, 14, 7, 0].compactMap {
+            cal.date(byAdding: .day, value: -$0, to: today)
+        }
+    }
+
+    private func xAxisLabel(_ date: Date) -> String {
+        let f = DateFormatter()
+        f.dateFormat = "M/d"
+        return f.string(from: date)
     }
 
     // MARK: - Legend dot
@@ -189,15 +191,6 @@ struct AnalyticsView: View {
         }
     }
 
-    // MARK: - Helpers
-    private func shortDateLabel(_ date: Date) -> String {
-        let cal = Calendar.current
-        if cal.isDateInToday(date) { return "Today" }
-        let f = DateFormatter()
-        f.dateFormat = "M/d"
-        return f.string(from: date)
-    }
-
     // MARK: - Load data
     private func loadData() async {
         guard let userId = authService.userId else { return }
@@ -207,7 +200,7 @@ struct AnalyticsView: View {
                 .from("food_log")
                 .select()
                 .eq("user_id", value: userId.uuidString)
-                .gte("log_date", value: dateString(daysAgo: 13))
+                .gte("log_date", value: dateString(daysAgo: 29))
                 .order("log_date", ascending: true)
                 .execute()
                 .value
@@ -216,7 +209,6 @@ struct AnalyticsView: View {
             formatter.dateFormat = "yyyy-MM-dd"
             formatter.timeZone = .current
 
-            // Aggregate by date
             var grouped: [String: (protein: Float, carbs: Float, fat: Float)] = [:]
             for entry in entries {
                 var current = grouped[entry.logDate] ?? (0, 0, 0)
@@ -229,8 +221,8 @@ struct AnalyticsView: View {
             let cal = Calendar.current
             var chart: [MacroChartEntry] = []
 
-            // All 14 days — zeros for days with no data so the area is continuous
-            for daysAgo in stride(from: 13, through: 0, by: -1) {
+            // All 30 days — zeros for empty days so the area is continuous
+            for daysAgo in stride(from: 29, through: 0, by: -1) {
                 let date = cal.date(byAdding: .day, value: -daysAgo, to: cal.startOfDay(for: Date()))!
                 let key = formatter.string(from: date)
                 let data = grouped[key]
@@ -239,7 +231,6 @@ struct AnalyticsView: View {
                 let carbCal = (data?.carbs ?? 0) * 4
                 let fatCal = (data?.fat ?? 0) * 9
 
-                // Order: Fat, Carbs, Protein — stacked bottom to top
                 chart.append(MacroChartEntry(date: date, macro: "Fat", calories: fatCal))
                 chart.append(MacroChartEntry(date: date, macro: "Carbs", calories: carbCal))
                 chart.append(MacroChartEntry(date: date, macro: "Protein", calories: proteinCal))
