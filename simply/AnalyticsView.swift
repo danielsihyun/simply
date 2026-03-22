@@ -53,6 +53,7 @@ struct AnalyticsView: View {
                             chartCard
                         }
 
+                        streakCard
                         goalMetCard
                     }
                     .padding(.horizontal, 18)
@@ -179,6 +180,51 @@ struct AnalyticsView: View {
         let f = DateFormatter()
         f.dateFormat = "M/d"
         return f.string(from: date)
+    }
+
+    // MARK: - Streak card
+    private var streakCard: some View {
+        VStack(alignment: .leading, spacing: 0) {
+            Text("STREAK")
+                .font(.system(size: 11, weight: .semibold))
+                .foregroundColor(.textMuted)
+                .tracking(0.8)
+                .padding(.bottom, 12)
+
+            HStack(spacing: 0) {
+                HStack(spacing: 6) {
+                    Text("🔥")
+                        .font(.system(size: 16))
+                    Text("\(authService.profile?.effectiveStreak ?? 0)")
+                        .font(.system(size: 22, weight: .medium, design: .monospaced))
+                        .foregroundColor(.streakColor)
+                    Text("days")
+                        .font(.system(size: 12))
+                        .foregroundColor(.textMuted)
+                }
+
+                Spacer()
+
+                Rectangle()
+                    .fill(Color.white.opacity(0.04))
+                    .frame(width: 1, height: 24)
+
+                Spacer()
+
+                HStack(spacing: 6) {
+                    Text("\(authService.profile?.streakLongest ?? 0)")
+                        .font(.system(size: 22, weight: .medium, design: .monospaced))
+                        .foregroundColor(.white.opacity(0.4))
+                    Text("longest")
+                        .font(.system(size: 12))
+                        .foregroundColor(.textVeryMuted)
+                }
+            }
+        }
+        .padding(.horizontal, 16)
+        .padding(.vertical, 14)
+        .background(Color.bgCard)
+        .cornerRadius(14)
     }
 
     // MARK: - Goal Met card
