@@ -20,16 +20,17 @@ struct StreakButton: View {
     let streak: Int
 
     var body: some View {
-        HStack(spacing: 3) {
-            Text("🔥")
-                .font(.system(size: 13))
-            Text("\(streak)")
-                .font(.system(size: 14, weight: .semibold, design: .monospaced))
-                .foregroundColor(.streakColor)
+        Button(action: {}) {
+            HStack(spacing: 2) {
+                Text("🔥")
+                    .font(.system(size: 11))
+                Text("\(streak)")
+                    .font(.system(size: 13, weight: .semibold, design: .monospaced))
+                    .foregroundColor(.streakColor)
+            }
+            .frame(width: 30, height: 30)
         }
-        .frame(height: 30)
-        .padding(.horizontal, 6)
-        .glassEffect(.regular.interactive())
+        .buttonStyle(.glass)
     }
 }
 
