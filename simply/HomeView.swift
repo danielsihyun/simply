@@ -220,6 +220,12 @@ struct HomeView: View {
                                                         handleSubmit()
                                                         return .handled
                                                     }
+                                                    .onSubmit {
+                                                        handleSubmit()
+                                                        DispatchQueue.main.asyncAfter(deadline: .now() + 0.05) {
+                                                            inputFocused = true
+                                                        }
+                                                    }
                                                     .fixedSize()
 
                                                     Text("g")
@@ -529,6 +535,18 @@ struct HomeView: View {
                         guard mode == .search && inputText.isEmpty else { return .ignored }
                         handleBackspace()
                         return .handled
+                    }
+                    .onSubmit {
+                        handleSubmit()
+                        lastWasBackspace = false
+                        // Re-focus after slight delay since onSubmit dismisses keyboard
+                        DispatchQueue.main.asyncAfter(deadline: .now() + 0.05) {
+                            if mode == .grams {
+                                gramsFocused = true
+                            } else {
+                                inputFocused = true
+                            }
+                        }
                     }
 
                     if mode == .custom {
