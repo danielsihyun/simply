@@ -45,15 +45,8 @@ struct AnalyticsView: View {
 
                 ScrollView {
                     VStack(alignment: .leading, spacing: 16) {
-                        if isLoading {
-                            loadingCard
-                        } else if chartEntries.isEmpty {
-                            emptyCard
-                        } else {
-                            chartCard
-                        }
-
                         streakCard
+                        chartCard
                         goalMetCard
                     }
                     .padding(.horizontal, 18)
@@ -66,33 +59,7 @@ struct AnalyticsView: View {
         }
     }
 
-    // MARK: - Loading card
-    private var loadingCard: some View {
-        VStack {
-            ProgressView()
-                .tint(.textMuted)
-        }
-        .frame(maxWidth: .infinity, minHeight: 220)
-        .background(Color.bgCard)
-        .cornerRadius(14)
-    }
-
-    // MARK: - Empty card
-    private var emptyCard: some View {
-        VStack(spacing: 6) {
-            Text("No data yet")
-                .font(.system(size: 14))
-                .foregroundColor(.textMuted)
-            Text("Start logging to see your trends")
-                .font(.system(size: 12))
-                .foregroundColor(.textVeryMuted)
-        }
-        .frame(maxWidth: .infinity, minHeight: 220)
-        .background(Color.bgCard)
-        .cornerRadius(14)
-    }
-
-    // MARK: - Chart card
+    // MARK: - Chart card (fixed size, loading/empty states inline)
     private var chartCard: some View {
         VStack(alignment: .leading, spacing: 0) {
             HStack {
@@ -103,55 +70,77 @@ struct AnalyticsView: View {
 
                 Spacer()
 
-                HStack(spacing: 10) {
-                    legendDot("Protein", color: .proteinColor)
-                    legendDot("Carbs", color: .carbColor)
-                    legendDot("Fat", color: .fatColor)
+                if !chartEntries.isEmpty {
+                    HStack(spacing: 10) {
+                        legendDot("Protein", color: .proteinColor)
+                        legendDot("Carbs", color: .carbColor)
+                        legendDot("Fat", color: .fatColor)
+                    }
                 }
             }
             .padding(.bottom, 14)
 
-            Chart(chartEntries) { entry in
-                AreaMark(
-                    x: .value("Date", entry.date, unit: .day),
-                    y: .value("Calories", entry.calories)
-                )
-                .foregroundStyle(by: .value("Macro", entry.macro))
-            }
-            .chartForegroundStyleScale([
-                "Protein": Color.proteinColor.opacity(0.6),
-                "Carbs": Color.carbColor.opacity(0.6),
-                "Fat": Color.fatColor.opacity(0.6)
-            ])
-            .chartYScale(domain: 0 ... chartYMax)
-            .chartXAxis {
-                AxisMarks(values: xAxisDates) { value in
-                    AxisValueLabel(anchor: value.index == 4 ? .topTrailing : .top) {
-                        if let date = value.as(Date.self) {
-                            Text(xAxisLabel(date))
-                                .font(.system(size: 9))
-                                .foregroundColor(.textVeryMuted)
-                        }
-                    }
-                    AxisGridLine()
-                        .foregroundStyle(.white.opacity(0.03))
+            if isLoading {
+                VStack {
+                    ProgressView()
+                        .tint(.textMuted)
                 }
-            }
-            .chartYAxis {
-                AxisMarks(position: .leading, values: .automatic(desiredCount: 4)) { value in
-                    AxisValueLabel {
-                        if let cal = value.as(Double.self) {
-                            Text("\(Int(cal))")
-                                .font(.system(size: 9, design: .monospaced))
-                                .foregroundColor(.textVeryMuted)
-                        }
-                    }
-                    AxisGridLine()
-                        .foregroundStyle(.white.opacity(0.03))
+                .frame(maxWidth: .infinity)
+                .frame(height: 240)
+            } else if chartEntries.isEmpty {
+                VStack(spacing: 6) {
+                    Text("No data yet")
+                        .font(.system(size: 14))
+                        .foregroundColor(.textMuted)
+                    Text("Start logging to see your trends")
+                        .font(.system(size: 12))
+                        .foregroundColor(.textVeryMuted)
                 }
+                .frame(maxWidth: .infinity)
+                .frame(height: 240)
+            } else {
+                Chart(chartEntries) { entry in
+                    AreaMark(
+                        x: .value("Date", entry.date, unit: .day),
+                        y: .value("Calories", entry.calories)
+                    )
+                    .foregroundStyle(by: .value("Macro", entry.macro))
+                }
+                .chartForegroundStyleScale([
+                    "Protein": Color.proteinColor.opacity(0.6),
+                    "Carbs": Color.carbColor.opacity(0.6),
+                    "Fat": Color.fatColor.opacity(0.6)
+                ])
+                .chartYScale(domain: 0 ... chartYMax)
+                .chartXAxis {
+                    AxisMarks(values: xAxisDates) { value in
+                        AxisValueLabel(anchor: value.index == 4 ? .topTrailing : .top) {
+                            if let date = value.as(Date.self) {
+                                Text(xAxisLabel(date))
+                                    .font(.system(size: 9))
+                                    .foregroundColor(.textVeryMuted)
+                            }
+                        }
+                        AxisGridLine()
+                            .foregroundStyle(.white.opacity(0.03))
+                    }
+                }
+                .chartYAxis {
+                    AxisMarks(position: .leading, values: .automatic(desiredCount: 4)) { value in
+                        AxisValueLabel {
+                            if let cal = value.as(Double.self) {
+                                Text("\(Int(cal))")
+                                    .font(.system(size: 9, design: .monospaced))
+                                    .foregroundColor(.textVeryMuted)
+                            }
+                        }
+                        AxisGridLine()
+                            .foregroundStyle(.white.opacity(0.03))
+                    }
+                }
+                .chartLegend(.hidden)
+                .frame(height: 240)
             }
-            .chartLegend(.hidden)
-            .frame(height: 240)
         }
         .padding(.horizontal, 16)
         .padding(.vertical, 14)
