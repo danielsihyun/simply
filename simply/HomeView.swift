@@ -58,6 +58,15 @@ struct HomeView: View {
     @FocusState private var inputFocused: Bool
     @FocusState private var gramsFocused: Bool
 
+    /// Zero-width space used as a sentinel so the software keyboard
+    /// has something to delete when the visible text is empty.
+    private static let sentinel = "\u{200B}"
+
+    /// The user-visible text (strips the sentinel character).
+    private var visibleInput: String {
+        inputText.replacingOccurrences(of: Self.sentinel, with: "")
+    }
+
     enum InputMode { case search, grams, custom }
 
     enum CustomStep: Int, CaseIterable {
@@ -316,6 +325,9 @@ struct HomeView: View {
                 currentMealIndex = logService.todayEntries.map(\.mealIndex).max() ?? 0
             }
 
+            // Seed sentinel so software keyboard backspace detection works
+            inputText = Self.sentinel
+
             // Auto-focus after data is ready
             try? await Task.sleep(nanoseconds: 200_000_000)
             inputFocused = true
@@ -497,10 +509,24 @@ struct HomeView: View {
             if mode != .grams {
                 // Input row (hidden in grams mode — input is inline in pending row)
                 HStack(spacing: 10) {
-                    TextField(
-                        currentPlaceholder,
-                        text: $inputText
-                    )
+                    ZStack(alignment: .leading) {
+                        // Manual placeholder (sentinel would suppress the built-in one)
+                        if mode == .search && visibleInput.isEmpty {
+                            Text(currentPlaceholder)
+                                .font(.inputSearch)
+                                .foregroundColor(.textMuted)
+                                .allowsHitTesting(false)
+                        } else if mode == .custom && visibleInput.isEmpty {
+                            Text(currentPlaceholder)
+                                .font(.inputGrams)
+                                .foregroundColor(.textMuted)
+                                .allowsHitTesting(false)
+                        }
+
+                        TextField(
+                            "",
+                            text: $inputText
+                        )
                     .font(mode == .search ? .inputSearch : .inputGrams)
                     .foregroundColor(mode == .search ? .textPrimary : .textMuted)
                     .keyboardType(mode == .custom ? .decimalPad : .default)
@@ -509,19 +535,47 @@ struct HomeView: View {
                     .focused($inputFocused)
                     .transaction { $0.animation = nil }
                     .onChange(of: inputText) { oldValue, newValue in
-                        if mode == .search {
-                            foodService.search(query: newValue)
+                        let oldVisible = oldValue.replacingOccurrences(of: Self.sentinel, with: "")
+                        let newVisible = newValue.replacingOccurrences(of: Self.sentinel, with: "")
 
-                            if newValue.isEmpty && !oldValue.isEmpty && !suppressUndo {
+                        // Detect backspace-on-empty for software keyboard (iPhone).
+                        // The sentinel gives the keyboard something to delete so we
+                        // can observe the transition sentinel→empty as a "backspace".
+                        if mode == .search && newValue.isEmpty && oldValue == Self.sentinel {
+                            // User deleted the sentinel — this is a backspace on empty
+                            handleBackspace()
+                            // Re-inject sentinel so the next backspace is also detectable.
+                            suppressUndo = true
+                            inputText = Self.sentinel
+                            return
+                        }
+
+                        if mode == .search {
+                            foodService.search(query: newVisible)
+
+                            if newVisible.isEmpty && !oldVisible.isEmpty && !suppressUndo {
                                 let latestMeal = logService.todayEntries.map(\.mealIndex).max() ?? 0
                                 if currentMealIndex > latestMeal {
                                     currentMealIndex = latestMeal
                                 }
                             }
+
+                            // When visible text becomes empty, inject sentinel so that
+                            // the next backspace on the software keyboard is detectable.
+                            if newVisible.isEmpty && !oldVisible.isEmpty && newValue != Self.sentinel {
+                                suppressUndo = true
+                                inputText = Self.sentinel
+                                return
+                            }
                         }
                         suppressUndo = false
-                        // Reset backspace/enter state when typing
-                        if !newValue.isEmpty {
+                        // Strip sentinel once the user types visible characters
+                        if !newVisible.isEmpty && newValue.contains(Self.sentinel) {
+                            inputText = newVisible
+                            return
+                        }
+                        // Reset backspace/enter state when typing visible characters
+                        if !newVisible.isEmpty {
                             lastWasBackspace = false
                             lastWasEnter = false
                         }
@@ -532,7 +586,7 @@ struct HomeView: View {
                         return .handled
                     }
                     .onKeyPress(.delete) {
-                        guard mode == .search && inputText.isEmpty else { return .ignored }
+                        guard mode == .search && visibleInput.isEmpty else { return .ignored }
                         handleBackspace()
                         return .handled
                     }
@@ -548,6 +602,7 @@ struct HomeView: View {
                             }
                         }
                     }
+                    } // ZStack
 
                     if mode == .custom {
                         Text(customStep == .serving ? "g" : customStep == .calories ? "cal" : "g")
@@ -559,7 +614,7 @@ struct HomeView: View {
             }
 
             // Double-enter hint
-            if mode == .search && lastWasEnter && inputText.isEmpty && !logService.todayEntries.isEmpty {
+            if mode == .search && lastWasEnter && visibleInput.isEmpty && !logService.todayEntries.isEmpty {
                 let latestMeal = logService.todayEntries.map(\.mealIndex).max() ?? 0
                 if currentMealIndex <= latestMeal {
                     Text("press enter again to start a new meal")
@@ -571,7 +626,7 @@ struct HomeView: View {
             }
 
             // Double-backspace hint
-            if mode == .search && lastWasBackspace && inputText.isEmpty && !logService.todayEntries.isEmpty {
+            if mode == .search && lastWasBackspace && visibleInput.isEmpty && !logService.todayEntries.isEmpty {
                 let latestMeal = logService.todayEntries.map(\.mealIndex).max() ?? 0
                 let onEmptyNewMeal = currentMealIndex > latestMeal
                 Text(onEmptyNewMeal
@@ -584,7 +639,7 @@ struct HomeView: View {
             }
 
             // Search suggestions or "add custom" option
-            if mode == .search && !inputText.isEmpty {
+            if mode == .search && !visibleInput.isEmpty {
                 if !foodService.searchResults.isEmpty {
                     SuggestionDropdown(
                         suggestions: foodService.searchResults,
@@ -592,7 +647,7 @@ struct HomeView: View {
                             selectFood(food)
                         }
                     )
-                } else if !foodService.isSearching && inputText.trimmingCharacters(in: .whitespaces).count >= 2 {
+                } else if !foodService.isSearching && visibleInput.trimmingCharacters(in: .whitespaces).count >= 2 {
                     // No results — offer custom food creation
                     Button {
                         startCustomFood()
@@ -602,7 +657,7 @@ struct HomeView: View {
                                 .font(.system(size: 14))
                                 .foregroundColor(.calBarBlue.opacity(0.6))
 
-                            Text("Add \"\(inputText.trimmingCharacters(in: .whitespaces))\" as custom food")
+                            Text("Add \"\(visibleInput.trimmingCharacters(in: .whitespaces))\" as custom food")
                                 .font(.system(size: 14))
                                 .foregroundColor(.textPrimary)
 
@@ -670,7 +725,7 @@ struct HomeView: View {
         guard let userId = authService.userId else { return }
         slideDirection = direction
 
-        inputText = ""
+        inputText = Self.sentinel
         mode = .search
         pendingFood = nil
         customFoodName = ""
@@ -734,7 +789,7 @@ struct HomeView: View {
         pendingFood = nil
         mode = .search
         suppressUndo = true
-        inputText = ""
+        inputText = Self.sentinel
         pendingBarcode = nil
         DispatchQueue.main.async {
             inputFocused = true
@@ -753,7 +808,7 @@ struct HomeView: View {
         }
 
         // Search mode
-        if inputText.trimmingCharacters(in: .whitespaces).isEmpty {
+        if visibleInput.trimmingCharacters(in: .whitespaces).isEmpty {
             let latestMeal = logService.todayEntries.map(\.mealIndex).max() ?? 0
             let alreadyOnNewMeal = currentMealIndex > latestMeal
 
@@ -768,7 +823,7 @@ struct HomeView: View {
         } else {
             if let first = foodService.searchResults.first {
                 selectFood(first)
-            } else if !foodService.isSearching && inputText.trimmingCharacters(in: .whitespaces).count >= 2 {
+            } else if !foodService.isSearching && visibleInput.trimmingCharacters(in: .whitespaces).count >= 2 {
                 startCustomFood()
             }
             lastWasEnter = false
@@ -822,7 +877,7 @@ struct HomeView: View {
         pendingFood = nil
         mode = .search
         suppressUndo = true
-        inputText = ""
+        inputText = Self.sentinel
         lastWasEnter = false
         lastWasBackspace = false
         pendingBarcode = nil
@@ -834,7 +889,7 @@ struct HomeView: View {
 
     // MARK: - Custom food flow
     private func startCustomFood() {
-        customFoodName = inputText.trimmingCharacters(in: .whitespaces)
+        customFoodName = visibleInput.trimmingCharacters(in: .whitespaces)
         customStep = .serving
         customServing = 100
         customCals = 0
@@ -852,7 +907,7 @@ struct HomeView: View {
         customFoodName = ""
         customStep = .serving
         suppressUndo = true
-        inputText = ""
+        inputText = Self.sentinel
         pendingBarcode = nil
         inputFocused = true
     }
@@ -894,7 +949,7 @@ struct HomeView: View {
         customFoodName = ""
         customStep = .serving
         suppressUndo = true
-        inputText = ""
+        inputText = Self.sentinel
         lastWasEnter = false
         pendingBarcode = nil
         inputFocused = true
