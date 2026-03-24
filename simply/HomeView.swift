@@ -52,6 +52,7 @@ struct HomeView: View {
     @State private var customProtein: Float = 0
     @State private var customCarbs: Float = 0
     @State private var pendingBarcode: String? = nil
+    @State private var lastWasCustomBackspace = false
     @FocusState private var inputFocused: Bool
     @FocusState private var gramsFocused: Bool
 
@@ -590,6 +591,7 @@ struct HomeView: View {
                         if !newVisible.isEmpty {
                             lastWasBackspace = false
                             lastWasEnter = false
+                            lastWasCustomBackspace = false
                         }
                     }
                     .onKeyPress(.return) {
@@ -648,6 +650,17 @@ struct HomeView: View {
                 Text(onEmptyNewMeal
                      ? "press delete again to remove meal"
                      : "press delete again to remove last entry")
+                    .font(.system(size: 11))
+                    .foregroundColor(.textVeryMuted)
+                    .italic()
+                    .padding(.bottom, 4)
+            }
+
+            // Custom mode double-delete hint
+            if mode == .custom && lastWasCustomBackspace && visibleInput.isEmpty {
+                Text(customStep == .serving
+                     ? "press delete again to cancel"
+                     : "press delete again to go back")
                     .font(.system(size: 11))
                     .foregroundColor(.textVeryMuted)
                     .italic()
@@ -880,18 +893,23 @@ struct HomeView: View {
     }
 
     private func handleCustomBackspace() {
-        if customStep == .serving {
-            cancelCustom()
-        } else if let prev = CustomStep(rawValue: customStep.rawValue - 1) {
-            customStep = prev
-            switch prev {
-            case .serving: inputText = "\(Int(customServing))"
-            case .calories: inputText = "\(Int(customCals))"
-            case .protein: inputText = "\(Int(customProtein))"
-            case .carbs: inputText = "\(Int(customCarbs))"
-            case .fat: break
+        if lastWasCustomBackspace {
+            lastWasCustomBackspace = false
+            if customStep == .serving {
+                cancelCustom()
+            } else if let prev = CustomStep(rawValue: customStep.rawValue - 1) {
+                customStep = prev
+                switch prev {
+                case .serving: inputText = "\(Int(customServing))"
+                case .calories: inputText = "\(Int(customCals))"
+                case .protein: inputText = "\(Int(customProtein))"
+                case .carbs: inputText = "\(Int(customCarbs))"
+                case .fat: break
+                }
+                inputFocused = true
             }
-            inputFocused = true
+        } else {
+            lastWasCustomBackspace = true
         }
     }
 
@@ -929,6 +947,7 @@ struct HomeView: View {
         customCarbs = 0
         mode = .custom
         suppressUndo = true
+        lastWasCustomBackspace = false
         inputText = Self.sentinel
         foodService.clearSearch()
         inputFocused = true
@@ -939,6 +958,7 @@ struct HomeView: View {
         customFoodName = ""
         customStep = .serving
         suppressUndo = true
+        lastWasCustomBackspace = false
         inputText = Self.sentinel
         pendingBarcode = nil
         inputFocused = true
@@ -961,6 +981,7 @@ struct HomeView: View {
         if let next = customStep.next {
             customStep = next
             suppressUndo = true
+            lastWasCustomBackspace = false
             inputText = Self.sentinel
             inputFocused = true
         }
