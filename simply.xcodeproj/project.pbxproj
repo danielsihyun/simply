@@ -14,9 +14,22 @@
 		73EBE9162F4A69D500FECDAE /* simply.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = simply.app; sourceTree = BUILT_PRODUCTS_DIR; };
 /* End PBXFileReference section */
 
+/* Begin PBXFileSystemSynchronizedBuildFileExceptionSet section */
+		73DCA16F2F721063009F9F97 /* Exceptions for "simply" folder in "simply" target */ = {
+			isa = PBXFileSystemSynchronizedBuildFileExceptionSet;
+			membershipExceptions = (
+				Info.plist,
+			);
+			target = 73EBE9152F4A69D500FECDAE /* simply */;
+		};
+/* End PBXFileSystemSynchronizedBuildFileExceptionSet section */
+
 /* Begin PBXFileSystemSynchronizedRootGroup section */
 		73EBE9182F4A69D500FECDAE /* simply */ = {
 			isa = PBXFileSystemSynchronizedRootGroup;
+			exceptions = (
+				73DCA16F2F721063009F9F97 /* Exceptions for "simply" folder in "simply" target */,
+			);
 			path = simply;
 			sourceTree = "<group>";
 		};
@@ -265,7 +278,9 @@
 				CURRENT_PROJECT_VERSION = 1;
 				DEVELOPMENT_TEAM = PWF3QUQ5JT;
 				ENABLE_PREVIEWS = YES;
-				GENERATE_INFOPLIST_FILE = YES;
+				GENERATE_INFOPLIST_FILE = NO;
+				INFOPLIST_FILE = simply/Info.plist;
+				INFOPLIST_KEY_NSCameraUsageDescription = "Used to scan food barcodes.";
 				INFOPLIST_KEY_UIApplicationSceneManifest_Generation = YES;
 				INFOPLIST_KEY_UIApplicationSupportsIndirectInputEvents = YES;
 				INFOPLIST_KEY_UILaunchScreen_Generation = YES;
@@ -298,7 +313,9 @@
 				CURRENT_PROJECT_VERSION = 1;
 				DEVELOPMENT_TEAM = PWF3QUQ5JT;
 				ENABLE_PREVIEWS = YES;
-				GENERATE_INFOPLIST_FILE = YES;
+				GENERATE_INFOPLIST_FILE = NO;
+				INFOPLIST_FILE = simply/Info.plist;
+				INFOPLIST_KEY_NSCameraUsageDescription = "Used to scan food barcodes.";
 				INFOPLIST_KEY_UIApplicationSceneManifest_Generation = YES;
 				INFOPLIST_KEY_UIApplicationSupportsIndirectInputEvents = YES;
 				INFOPLIST_KEY_UILaunchScreen_Generation = YES;

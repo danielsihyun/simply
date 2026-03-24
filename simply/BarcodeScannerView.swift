@@ -17,11 +17,8 @@ struct BarcodeScanButton: View {
 
 // MARK: - Scan Result
 enum ScanResult {
-    /// Found in local DB (previously scanned barcode)
     case existingFood(Food)
-    /// Found in OpenFoodFacts — create food with barcode and select
     case scannedFood(ScannedFood, barcode: String)
-    /// Not found anywhere — enter custom flow with barcode attached
     case notFound(barcode: String)
 }
 
@@ -48,7 +45,6 @@ struct BarcodeScannerView: View {
             .ignoresSafeArea()
 
             VStack {
-                // Top bar
                 HStack {
                     Spacer()
                     Button {
@@ -67,7 +63,6 @@ struct BarcodeScannerView: View {
 
                 Spacer()
 
-                // Scanning reticle
                 RoundedRectangle(cornerRadius: 12)
                     .stroke(Color.white.opacity(0.6), lineWidth: 2)
                     .frame(width: 260, height: 120)
@@ -82,7 +77,6 @@ struct BarcodeScannerView: View {
 
                 Spacer()
 
-                // Status text
                 VStack(spacing: 12) {
                     if showNotFound, let code = scannedCode {
                         Text("Product not found")
@@ -146,7 +140,6 @@ struct BarcodeScannerView: View {
         showNotFound = false
 
         Task {
-            // 1. Check local database first (previously scanned barcodes)
             if let existingFood = await foodService.lookupByBarcode(code: code) {
                 await MainActor.run {
                     onResult(.existingFood(existingFood))
@@ -155,7 +148,6 @@ struct BarcodeScannerView: View {
                 return
             }
 
-            // 2. Try OpenFoodFacts
             do {
                 let scanned = try await OpenFoodFactsService.lookup(barcode: code)
                 await MainActor.run {
@@ -163,7 +155,6 @@ struct BarcodeScannerView: View {
                     dismiss()
                 }
             } catch LookupError.notFound {
-                // 3. Not found anywhere — offer manual entry
                 await MainActor.run {
                     isLookingUp = false
                     showNotFound = true
@@ -248,27 +239,19 @@ struct CameraPreview: UIViewRepresentable {
         let session = AVCaptureSession()
         context.coordinator.session = session
 
-        guard let device = AVCaptureDevice.default(for: .video),
-              let input = try? AVCaptureDeviceInput(device: device) else { return view }
-
-        if session.canAddInput(input) {
-            session.addInput(input)
-        }
-
-        let output = AVCaptureMetadataOutput()
-        if session.canAddOutput(output) {
-            session.addOutput(output)
-            output.setMetadataObjectsDelegate(context.coordinator, queue: .main)
-            output.metadataObjectTypes = [.ean8, .ean13, .upce, .code128, .code39]
-        }
-
-        let previewLayer = AVCaptureVideoPreviewLayer(session: session)
-        previewLayer.videoGravity = .resizeAspectFill
-        view.layer.addSublayer(previewLayer)
-        context.coordinator.previewLayer = previewLayer
-
-        DispatchQueue.global(qos: .userInitiated).async {
-            session.startRunning()
+        switch AVCaptureDevice.authorizationStatus(for: .video) {
+        case .authorized:
+            Self.setupSession(session: session, in: view, coordinator: context.coordinator)
+        case .notDetermined:
+            AVCaptureDevice.requestAccess(for: .video) { granted in
+                if granted {
+                    DispatchQueue.main.async {
+                        Self.setupSession(session: session, in: view, coordinator: context.coordinator)
+                    }
+                }
+            }
+        default:
+            break
         }
 
         return view
@@ -282,6 +265,32 @@ struct CameraPreview: UIViewRepresentable {
 
     func makeCoordinator() -> Coordinator {
         Coordinator(onBarcodeDetected: onBarcodeDetected)
+    }
+
+    private static func setupSession(session: AVCaptureSession, in view: UIView, coordinator: Coordinator) {
+        guard let device = AVCaptureDevice.default(for: .video),
+              let input = try? AVCaptureDeviceInput(device: device) else { return }
+
+        if session.canAddInput(input) {
+            session.addInput(input)
+        }
+
+        let output = AVCaptureMetadataOutput()
+        if session.canAddOutput(output) {
+            session.addOutput(output)
+            output.setMetadataObjectsDelegate(coordinator, queue: .main)
+            output.metadataObjectTypes = [.ean8, .ean13, .upce, .code128, .code39]
+        }
+
+        let previewLayer = AVCaptureVideoPreviewLayer(session: session)
+        previewLayer.videoGravity = .resizeAspectFill
+        previewLayer.frame = view.bounds
+        view.layer.addSublayer(previewLayer)
+        coordinator.previewLayer = previewLayer
+
+        DispatchQueue.global(qos: .userInitiated).async {
+            session.startRunning()
+        }
     }
 
     class Coordinator: NSObject, AVCaptureMetadataOutputObjectsDelegate {
