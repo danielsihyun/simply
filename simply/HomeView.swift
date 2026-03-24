@@ -913,7 +913,28 @@ struct HomeView: View {
     }
 
     private func advanceCustomStep() {
-        let value = Float(inputText) ?? 0
+        let raw = inputText.trimmingCharacters(in: .whitespaces)
+        
+        // Empty submit = go back one step (or cancel on first step)
+        if raw.isEmpty {
+            if customStep == .serving {
+                cancelCustom()
+            } else if let prevRaw = CustomStep(rawValue: customStep.rawValue - 1) {
+                customStep = prevRaw
+                // Restore the previous value
+                switch prevRaw {
+                case .serving: inputText = "\(Int(customServing))"
+                case .calories: inputText = "\(Int(customCals))"
+                case .protein: inputText = "\(Int(customProtein))"
+                case .carbs: inputText = "\(Int(customCarbs))"
+                case .fat: break
+                }
+                inputFocused = true
+            }
+            return
+        }
+        
+        let value = Float(raw) ?? 0
 
         switch customStep {
         case .serving: customServing = max(value, 1)
