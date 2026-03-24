@@ -4,7 +4,6 @@ import Combine
 // MARK: - Settings Button (standalone Liquid Glass)
 struct SettingsButton: View {
     let action: () -> Void
-
     var body: some View {
         Button(action: action) {
             Image(systemName: "gearshape")
@@ -18,7 +17,6 @@ struct SettingsButton: View {
 // MARK: - Analytics Button (Liquid Glass)
 struct AnalyticsButton: View {
     let action: () -> Void
-
     var body: some View {
         Button(action: action) {
             Image(systemName: "chart.bar.fill")
@@ -28,7 +26,6 @@ struct AnalyticsButton: View {
         .buttonStyle(.glass)
     }
 }
-
 
 // MARK: - Main View
 struct HomeView: View {
@@ -550,6 +547,14 @@ struct HomeView: View {
                             return
                         }
 
+                        // Detect backspace-on-empty in custom mode (software keyboard)
+                        if mode == .custom && newValue.isEmpty && oldValue == Self.sentinel {
+                            handleCustomBackspace()
+                            suppressUndo = true
+                            inputText = Self.sentinel
+                            return
+                        }
+
                         if mode == .search {
                             foodService.search(query: newVisible)
 
@@ -567,6 +572,13 @@ struct HomeView: View {
                                 inputText = Self.sentinel
                                 return
                             }
+                        }
+
+                        // Re-inject sentinel in custom mode when visible text becomes empty
+                        if mode == .custom && newVisible.isEmpty && !oldVisible.isEmpty && newValue != Self.sentinel {
+                            suppressUndo = true
+                            inputText = Self.sentinel
+                            return
                         }
                         suppressUndo = false
                         // Strip sentinel once the user types visible characters
@@ -586,8 +598,12 @@ struct HomeView: View {
                         return .handled
                     }
                     .onKeyPress(.delete) {
-                        guard mode == .search && visibleInput.isEmpty else { return .ignored }
-                        handleBackspace()
+                        guard visibleInput.isEmpty else { return .ignored }
+                        if mode == .search {
+                            handleBackspace()
+                        } else if mode == .custom {
+                            handleCustomBackspace()
+                        }
                         return .handled
                     }
                     .onSubmit {
@@ -863,6 +879,22 @@ struct HomeView: View {
         }
     }
 
+    private func handleCustomBackspace() {
+        if customStep == .serving {
+            cancelCustom()
+        } else if let prev = CustomStep(rawValue: customStep.rawValue - 1) {
+            customStep = prev
+            switch prev {
+            case .serving: inputText = "\(Int(customServing))"
+            case .calories: inputText = "\(Int(customCals))"
+            case .protein: inputText = "\(Int(customProtein))"
+            case .carbs: inputText = "\(Int(customCarbs))"
+            case .fat: break
+            }
+            inputFocused = true
+        }
+    }
+
     private func confirmFood() {
         guard let food = pendingFood,
               let userId = authService.userId else { return }
@@ -897,7 +929,7 @@ struct HomeView: View {
         customCarbs = 0
         mode = .custom
         suppressUndo = true
-        inputText = ""
+        inputText = Self.sentinel
         foodService.clearSearch()
         inputFocused = true
     }
@@ -913,28 +945,7 @@ struct HomeView: View {
     }
 
     private func advanceCustomStep() {
-        let raw = inputText.trimmingCharacters(in: .whitespaces)
-        
-        // Empty submit = go back one step (or cancel on first step)
-        if raw.isEmpty {
-            if customStep == .serving {
-                cancelCustom()
-            } else if let prevRaw = CustomStep(rawValue: customStep.rawValue - 1) {
-                customStep = prevRaw
-                // Restore the previous value
-                switch prevRaw {
-                case .serving: inputText = "\(Int(customServing))"
-                case .calories: inputText = "\(Int(customCals))"
-                case .protein: inputText = "\(Int(customProtein))"
-                case .carbs: inputText = "\(Int(customCarbs))"
-                case .fat: break
-                }
-                inputFocused = true
-            }
-            return
-        }
-        
-        let value = Float(raw) ?? 0
+        let value = Float(visibleInput) ?? 0
 
         switch customStep {
         case .serving: customServing = max(value, 1)
@@ -949,7 +960,8 @@ struct HomeView: View {
 
         if let next = customStep.next {
             customStep = next
-            inputText = ""
+            suppressUndo = true
+            inputText = Self.sentinel
             inputFocused = true
         }
     }
