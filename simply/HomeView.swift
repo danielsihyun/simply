@@ -529,7 +529,7 @@ struct HomeView: View {
                         )
                     .font(mode == .search ? .inputSearch : .inputGrams)
                     .foregroundColor(mode == .search ? .textPrimary : .textMuted)
-                    .keyboardType(mode == .custom ? .decimalPad : .default)
+                    .keyboardType(mode == .custom ? .numbersAndPunctuation : .default)
                     .autocorrectionDisabled()
                     .textInputAutocapitalization(.never)
                     .focused($inputFocused)
