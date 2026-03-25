@@ -48,6 +48,7 @@ struct HomeView: View {
     @State private var customFoodName = ""
     @State private var customStep: CustomStep = .serving
     @State private var customServing: Float = 100
+    @State private var customIsCount = false
     @State private var customCals: Float = 0
     @State private var customProtein: Float = 0
     @State private var customCarbs: Float = 0
@@ -559,13 +560,6 @@ struct HomeView: View {
                         if mode == .search {
                             foodService.search(query: newVisible)
 
-                            if newVisible.isEmpty && !oldVisible.isEmpty && !suppressUndo {
-                                let latestMeal = logService.todayEntries.map(\.mealIndex).max() ?? 0
-                                if currentMealIndex > latestMeal {
-                                    currentMealIndex = latestMeal
-                                }
-                            }
-
                             // When visible text becomes empty, inject sentinel so that
                             // the next backspace on the software keyboard is detectable.
                             if newVisible.isEmpty && !oldVisible.isEmpty && newValue != Self.sentinel {
@@ -623,9 +617,23 @@ struct HomeView: View {
                     } // ZStack
 
                     if mode == .custom {
-                        Text(customStep == .serving ? "g" : customStep == .calories ? "cal" : "g")
-                            .font(.system(size: 11))
-                            .foregroundColor(.textMuted)
+                        if customStep == .serving {
+                            Button {
+                                customIsCount.toggle()
+                            } label: {
+                                Text(customIsCount ? "ct" : "g")
+                                    .font(.system(size: 11, weight: .medium))
+                                    .foregroundColor(Color.calBarBlue.opacity(0.7))
+                                    .padding(.horizontal, 6)
+                                    .padding(.vertical, 2)
+                                    .background(Color.calBarBlue.opacity(0.1))
+                                    .cornerRadius(4)
+                            }
+                        } else {
+                            Text(customStep == .calories ? "cal" : "g")
+                                .font(.system(size: 11))
+                                .foregroundColor(.textMuted)
+                        }
                     }
                 }
                 .padding(.vertical, 4)
@@ -719,6 +727,21 @@ struct HomeView: View {
         case .grams:
             return "\(Int(pendingFood?.servingGrams ?? 100))"
         case .custom:
+            if customStep == .serving {
+                return customIsCount ? "count per serving" : "serving size in grams"
+            }
+            if customStep == .calories {
+                return customIsCount ? "calories per serving" : "calories per serving"
+            }
+            if customStep == .protein {
+                return customIsCount ? "protein per serving (g)" : "protein (g)"
+            }
+            if customStep == .carbs {
+                return customIsCount ? "carbs per serving (g)" : "carbs (g)"
+            }
+            if customStep == .fat {
+                return customIsCount ? "fat per serving (g)" : "fat (g)"
+            }
             return customStep.prompt
         }
     }
@@ -727,7 +750,7 @@ struct HomeView: View {
     private var customPreviewText: some View {
         HStack(spacing: 6) {
             if customStep.rawValue > 0 {
-                Text("\(Int(customServing))g")
+                Text("\(Int(customServing))\(customIsCount ? "×" : "g")")
                     .font(.monoTiny)
                     .foregroundColor(.textMuted)
             }
@@ -759,6 +782,7 @@ struct HomeView: View {
         pendingFood = nil
         customFoodName = ""
         customStep = .serving
+        customIsCount = false
         lastWasEnter = false
         lastWasBackspace = false
         suppressUndo = true
@@ -942,6 +966,7 @@ struct HomeView: View {
         customFoodName = visibleInput.trimmingCharacters(in: .whitespaces)
         customStep = .serving
         customServing = 100
+        customIsCount = false
         customCals = 0
         customProtein = 0
         customCarbs = 0
@@ -957,6 +982,7 @@ struct HomeView: View {
         mode = .search
         customFoodName = ""
         customStep = .serving
+        customIsCount = false
         suppressUndo = true
         lastWasCustomBackspace = false
         inputText = Self.sentinel
@@ -1002,6 +1028,7 @@ struct HomeView: View {
         mode = .search
         customFoodName = ""
         customStep = .serving
+        customIsCount = false
         suppressUndo = true
         inputText = Self.sentinel
         lastWasEnter = false
