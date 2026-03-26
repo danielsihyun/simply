@@ -54,7 +54,6 @@ struct HomeView: View {
     @State private var customCarbs: Float = 0
     @State private var pendingBarcode: String? = nil
     @State private var lastWasCustomBackspace = false
-    @State private var scrollToInput = 0
     @FocusState private var inputFocused: Bool
     @FocusState private var gramsFocused: Bool
 
@@ -134,7 +133,6 @@ struct HomeView: View {
     }
 
     var body: some View {
-        GeometryReader { geo in
         ZStack(alignment: .bottom) {
             Color.bgPrimary.ignoresSafeArea()
 
@@ -301,24 +299,17 @@ struct HomeView: View {
 
                             // Input area — outside the sliding transition so it doesn't flash
                             inputAreaView
-                                .id("inputArea")
 
-                            // Bottom padding — enough so input can scroll to a comfortable position
-                            Spacer().frame(height: max(geo.size.height * 0.5, 200))
+                            // Bottom padding
+                            Spacer().frame(height: 120)
                                 .id("bottom")
                         }
                         .padding(.horizontal, 18)
                         .clipped()
                     }
                     .scrollDismissesKeyboard(.interactively)
-                    .onChange(of: scrollToInput) { _, _ in
-                        withAnimation(.easeOut(duration: 0.25)) {
-                            proxy.scrollTo("inputArea", anchor: .top)
-                        }
-                    }
                 }
             }
-        }
         }
         .onTapGesture {
             if mode == .grams {
@@ -339,7 +330,6 @@ struct HomeView: View {
             // Auto-focus after data is ready
             try? await Task.sleep(nanoseconds: 200_000_000)
             inputFocused = true
-            scrollToInput += 1
         }
         .sheet(isPresented: $showSettings) {
             SettingsView()
@@ -803,7 +793,6 @@ struct HomeView: View {
             logService.todayEntries = entries
             currentMealIndex = entries.map(\.mealIndex).max() ?? 0
             selectedDate = newDate
-            scrollToInput += 1
         }
     }
 
@@ -847,7 +836,6 @@ struct HomeView: View {
         inputText = "\(Int(food.servingGrams))"
         foodService.clearSearch()
         gramsFocused = true
-        scrollToInput += 1
     }
 
     private func cancelPending() {
@@ -882,10 +870,8 @@ struct HomeView: View {
             } else if lastWasEnter {
                 currentMealIndex += 1
                 lastWasEnter = false
-                scrollToInput += 1
             } else {
                 lastWasEnter = true
-                scrollToInput += 1
             }
         } else {
             if let first = foodService.searchResults.first {
@@ -907,11 +893,9 @@ struct HomeView: View {
             if lastWasBackspace {
                 currentMealIndex = latestMeal
                 lastWasBackspace = false
-                scrollToInput += 1
             } else {
                 lastWasBackspace = true
                 lastWasEnter = false
-                scrollToInput += 1
             }
         } else {
             guard !logService.todayEntries.isEmpty else { return }
@@ -922,16 +906,12 @@ struct HomeView: View {
                     Task {
                         await logService.deleteEntry(lastEntry)
                         await authService.loadProfile()
-                        await MainActor.run {
-                            scrollToInput += 1
-                        }
                     }
                 }
                 lastWasBackspace = false
             } else {
                 lastWasBackspace = true
                 lastWasEnter = false
-                scrollToInput += 1
             }
         }
     }
@@ -954,7 +934,6 @@ struct HomeView: View {
             }
         } else {
             lastWasCustomBackspace = true
-            scrollToInput += 1
         }
     }
 
@@ -964,6 +943,11 @@ struct HomeView: View {
 
         let grams = Float(inputText) ?? food.servingGrams
 
+        Task {
+            await logService.addEntry(userId: userId, food: food, grams: grams, mealIndex: currentMealIndex, date: selectedDate)
+            await authService.loadProfile()
+        }
+
         pendingFood = nil
         mode = .search
         suppressUndo = true
@@ -972,13 +956,8 @@ struct HomeView: View {
         lastWasBackspace = false
         pendingBarcode = nil
 
-        Task {
-            await logService.addEntry(userId: userId, food: food, grams: grams, mealIndex: currentMealIndex, date: selectedDate)
-            await authService.loadProfile()
-            await MainActor.run {
-                inputFocused = true
-                scrollToInput += 1
-            }
+        DispatchQueue.main.async {
+            inputFocused = true
         }
     }
 
@@ -997,7 +976,6 @@ struct HomeView: View {
         inputText = Self.sentinel
         foodService.clearSearch()
         inputFocused = true
-        scrollToInput += 1
     }
 
     private func cancelCustom() {
@@ -1075,9 +1053,6 @@ struct HomeView: View {
                     date: date
                 )
                 await authService.loadProfile()
-                await MainActor.run {
-                    scrollToInput += 1
-                }
             }
         }
     }
