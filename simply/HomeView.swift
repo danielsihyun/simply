@@ -30,6 +30,7 @@ struct AnalyticsButton: View {
 // MARK: - Main View
 struct HomeView: View {
     @EnvironmentObject var authService: AuthService
+    @EnvironmentObject var macroColors: MacroColors
     @StateObject private var logService = LogService()
     @StateObject private var foodService = FoodService()
 
@@ -57,11 +58,8 @@ struct HomeView: View {
     @FocusState private var inputFocused: Bool
     @FocusState private var gramsFocused: Bool
 
-    /// Zero-width space used as a sentinel so the software keyboard
-    /// has something to delete when the visible text is empty.
     private static let sentinel = "\u{200B}"
 
-    /// The user-visible text (strips the sentinel character).
     private var visibleInput: String {
         inputText.replacingOccurrences(of: Self.sentinel, with: "")
     }
@@ -121,7 +119,6 @@ struct HomeView: View {
         return f.string(from: selectedDate)
     }
 
-    // Live preview macros for grams mode
     private var previewGrams: Float {
         guard mode == .grams, pendingFood != nil else { return 0 }
         return Float(inputText) ?? 0
@@ -137,16 +134,13 @@ struct HomeView: View {
             Color.bgPrimary.ignoresSafeArea()
 
             VStack(alignment: .leading, spacing: 0) {
-                // Header - outside ScrollView, immune to slide animation
                 headerView
                     .padding(.horizontal, 18)
 
                 ScrollViewReader { proxy in
                     ScrollView {
                         VStack(alignment: .leading, spacing: 0) {
-                            // Transitioning content (slides with date changes)
                             VStack(alignment: .leading, spacing: 0) {
-                                // Day summary
                                 DaySummaryView(
                                     cal: logService.totalCalories,
                                     protein: logService.totalProtein,
@@ -156,10 +150,8 @@ struct HomeView: View {
                                 )
                                 .padding(.bottom, 24)
 
-                                // Food entries (notepad)
                                 mealEntriesView
 
-                                // New meal divider - shows after double-enter
                                 if !logService.todayEntries.isEmpty {
                                     let latestMeal = logService.todayEntries.map(\.mealIndex).max() ?? 0
                                     if currentMealIndex > latestMeal {
@@ -183,7 +175,6 @@ struct HomeView: View {
                                     }
                                 }
 
-                                // Inline input area
                                 if logService.todayEntries.isEmpty {
                                     HStack {
                                         Text("Meal 1")
@@ -196,7 +187,6 @@ struct HomeView: View {
                                     .padding(.bottom, 2)
                                 }
 
-                                // Pending food row (grams mode) — same layout as FoodEntryRow
                                 if mode == .grams, let food = pendingFood {
                                     let isFirstInMeal: Bool = {
                                         if logService.todayEntries.isEmpty { return true }
@@ -210,7 +200,6 @@ struct HomeView: View {
                                                 .font(.bodyFood)
                                                 .foregroundColor(.textPrimary)
 
-                                            // Detail line with inline grams input
                                             HStack(spacing: 10) {
                                                 HStack(spacing: 1) {
                                                     TextField(
@@ -251,13 +240,13 @@ struct HomeView: View {
                                                         .foregroundColor(.white.opacity(0.4))
                                                     Text("\(Int(macros.protein))p")
                                                         .font(.monoSmall)
-                                                        .foregroundColor(.proteinColor)
+                                                        .foregroundColor(macroColors.protein)
                                                     Text("\(Int(macros.carbs))c")
                                                         .font(.monoSmall)
-                                                        .foregroundColor(.carbColor)
+                                                        .foregroundColor(macroColors.carbs)
                                                     Text("\(Int(macros.fat))f")
                                                         .font(.monoSmall)
-                                                        .foregroundColor(.fatColor)
+                                                        .foregroundColor(macroColors.fat)
                                                 } else {
                                                     let grams = Float(inputText) ?? food.servingGrams
                                                     let fallbackMacros = food.macros(forGrams: grams)
@@ -266,13 +255,13 @@ struct HomeView: View {
                                                         .foregroundColor(.white.opacity(0.4))
                                                     Text("\(Int(fallbackMacros.protein))p")
                                                         .font(.monoSmall)
-                                                        .foregroundColor(.proteinColor)
+                                                        .foregroundColor(macroColors.protein)
                                                     Text("\(Int(fallbackMacros.carbs))c")
                                                         .font(.monoSmall)
-                                                        .foregroundColor(.carbColor)
+                                                        .foregroundColor(macroColors.carbs)
                                                     Text("\(Int(fallbackMacros.fat))f")
                                                         .font(.monoSmall)
-                                                        .foregroundColor(.fatColor)
+                                                        .foregroundColor(macroColors.fat)
                                                 }
                                             }
                                         }
@@ -297,10 +286,8 @@ struct HomeView: View {
                             ))
                             .animation(.easeInOut(duration: 0.3), value: selectedDate)
 
-                            // Input area — outside the sliding transition so it doesn't flash
                             inputAreaView
 
-                            // Bottom padding
                             Spacer().frame(height: 120)
                                 .id("bottom")
                         }
@@ -323,17 +310,14 @@ struct HomeView: View {
                 await logService.loadEntries(userId: userId, date: selectedDate)
                 currentMealIndex = logService.todayEntries.map(\.mealIndex).max() ?? 0
             }
-
-            // Seed sentinel so software keyboard backspace detection works
             inputText = Self.sentinel
-
-            // Auto-focus after data is ready
             try? await Task.sleep(nanoseconds: 200_000_000)
             inputFocused = true
         }
         .sheet(isPresented: $showSettings) {
             SettingsView()
                 .environmentObject(authService)
+                .environmentObject(macroColors)
         }
         .sheet(isPresented: $showScanner) {
             BarcodeScannerView(foodService: foodService) { result in
@@ -343,6 +327,7 @@ struct HomeView: View {
         .sheet(isPresented: $showAnalytics) {
             AnalyticsView()
                 .environmentObject(authService)
+                .environmentObject(macroColors)
         }
         .simultaneousGesture(
             DragGesture(minimumDistance: 50, coordinateSpace: .local)
@@ -406,12 +391,11 @@ struct HomeView: View {
         .padding(.bottom, 16)
     }
 
-    // MARK: - Meal entries (notepad style)
+    // MARK: - Meal entries
     private var mealEntriesView: some View {
         let groups = groupedEntries()
         return ForEach(Array(groups.enumerated()), id: \.offset) { mealIdx, group in
             VStack(alignment: .leading, spacing: 0) {
-                // Meal header — also a drop target
                 HStack {
                     Text("Meal \(mealIdx + 1)")
                         .font(.labelMealHeader)
@@ -428,7 +412,6 @@ struct HomeView: View {
                 }
                 .padding(.bottom, 2)
 
-                // Food items
                 ForEach(group) { entry in
                     FoodEntryRow(entry: entry) {
                         Task {
@@ -438,7 +421,6 @@ struct HomeView: View {
                     }
                 }
 
-                // Divider between meals
                 if mealIdx < groups.count - 1 {
                     Rectangle()
                         .fill(Color.white.opacity(0.04))
@@ -476,7 +458,6 @@ struct HomeView: View {
                 }
                 .padding(.bottom, 4)
 
-                // Step progress dots
                 HStack(spacing: 6) {
                     ForEach(CustomStep.allCases, id: \.rawValue) { step in
                         HStack(spacing: 3) {
@@ -497,7 +478,6 @@ struct HomeView: View {
                     }
                     Spacer()
 
-                    // Running preview of entered values
                     if customStep.rawValue > 0 {
                         customPreviewText
                     }
@@ -506,10 +486,8 @@ struct HomeView: View {
             }
 
             if mode != .grams {
-                // Input row (hidden in grams mode — input is inline in pending row)
                 HStack(spacing: 10) {
                     ZStack(alignment: .leading) {
-                        // Manual placeholder (sentinel would suppress the built-in one)
                         if mode == .search && visibleInput.isEmpty {
                             Text(currentPlaceholder)
                                 .font(.inputSearch)
@@ -537,19 +515,13 @@ struct HomeView: View {
                         let oldVisible = oldValue.replacingOccurrences(of: Self.sentinel, with: "")
                         let newVisible = newValue.replacingOccurrences(of: Self.sentinel, with: "")
 
-                        // Detect backspace-on-empty for software keyboard (iPhone).
-                        // The sentinel gives the keyboard something to delete so we
-                        // can observe the transition sentinel→empty as a "backspace".
                         if mode == .search && newValue.isEmpty && oldValue == Self.sentinel {
-                            // User deleted the sentinel — this is a backspace on empty
                             handleBackspace()
-                            // Re-inject sentinel so the next backspace is also detectable.
                             suppressUndo = true
                             inputText = Self.sentinel
                             return
                         }
 
-                        // Detect backspace-on-empty in custom mode (software keyboard)
                         if mode == .custom && newValue.isEmpty && oldValue == Self.sentinel {
                             handleCustomBackspace()
                             suppressUndo = true
@@ -560,8 +532,6 @@ struct HomeView: View {
                         if mode == .search {
                             foodService.search(query: newVisible)
 
-                            // When visible text becomes empty, inject sentinel so that
-                            // the next backspace on the software keyboard is detectable.
                             if newVisible.isEmpty && !oldVisible.isEmpty && newValue != Self.sentinel {
                                 suppressUndo = true
                                 inputText = Self.sentinel
@@ -569,19 +539,16 @@ struct HomeView: View {
                             }
                         }
 
-                        // Re-inject sentinel in custom mode when visible text becomes empty
                         if mode == .custom && newVisible.isEmpty && !oldVisible.isEmpty && newValue != Self.sentinel {
                             suppressUndo = true
                             inputText = Self.sentinel
                             return
                         }
                         suppressUndo = false
-                        // Strip sentinel once the user types visible characters
                         if !newVisible.isEmpty && newValue.contains(Self.sentinel) {
                             inputText = newVisible
                             return
                         }
-                        // Reset backspace/enter state when typing visible characters
                         if !newVisible.isEmpty {
                             lastWasBackspace = false
                             lastWasEnter = false
@@ -605,7 +572,6 @@ struct HomeView: View {
                     .onSubmit {
                         handleSubmit()
                         lastWasBackspace = false
-                        // Re-focus after slight delay since onSubmit dismisses keyboard
                         DispatchQueue.main.asyncAfter(deadline: .now() + 0.05) {
                             if mode == .grams {
                                 gramsFocused = true
@@ -614,7 +580,7 @@ struct HomeView: View {
                             }
                         }
                     }
-                    } // ZStack
+                    }
 
                     if mode == .custom {
                         if customStep == .serving {
@@ -639,7 +605,6 @@ struct HomeView: View {
                 .padding(.vertical, 4)
             }
 
-            // Double-enter hint
             if mode == .search && lastWasEnter && visibleInput.isEmpty && !logService.todayEntries.isEmpty {
                 let latestMeal = logService.todayEntries.map(\.mealIndex).max() ?? 0
                 if currentMealIndex <= latestMeal {
@@ -651,7 +616,6 @@ struct HomeView: View {
                 }
             }
 
-            // Double-backspace hint
             if mode == .search && lastWasBackspace && visibleInput.isEmpty && !logService.todayEntries.isEmpty {
                 let latestMeal = logService.todayEntries.map(\.mealIndex).max() ?? 0
                 let onEmptyNewMeal = currentMealIndex > latestMeal
@@ -664,7 +628,6 @@ struct HomeView: View {
                     .padding(.bottom, 4)
             }
 
-            // Custom mode double-delete hint
             if mode == .custom && lastWasCustomBackspace && visibleInput.isEmpty {
                 Text(customStep == .serving
                      ? "press delete again to cancel"
@@ -675,7 +638,6 @@ struct HomeView: View {
                     .padding(.bottom, 4)
             }
 
-            // Search suggestions or "add custom" option
             if mode == .search && !visibleInput.isEmpty {
                 if !foodService.searchResults.isEmpty {
                     SuggestionDropdown(
@@ -685,7 +647,6 @@ struct HomeView: View {
                         }
                     )
                 } else if !foodService.isSearching && visibleInput.trimmingCharacters(in: .whitespaces).count >= 2 {
-                    // No results — offer custom food creation
                     Button {
                         startCustomFood()
                     } label: {
@@ -719,7 +680,6 @@ struct HomeView: View {
         .padding(.top, 4)
     }
 
-    // Dynamic placeholder
     private var currentPlaceholder: String {
         switch mode {
         case .search:
@@ -746,7 +706,6 @@ struct HomeView: View {
         }
     }
 
-    // Running preview of entered custom values
     private var customPreviewText: some View {
         HStack(spacing: 6) {
             if customStep.rawValue > 0 {
@@ -762,12 +721,12 @@ struct HomeView: View {
             if customStep.rawValue > 2 {
                 Text("\(Int(customProtein))p")
                     .font(.monoTiny)
-                    .foregroundColor(.proteinColor)
+                    .foregroundColor(macroColors.protein)
             }
             if customStep.rawValue > 3 {
                 Text("\(Int(customCarbs))c")
                     .font(.monoTiny)
-                    .foregroundColor(.carbColor)
+                    .foregroundColor(macroColors.carbs)
             }
         }
     }
@@ -860,7 +819,6 @@ struct HomeView: View {
             return
         }
 
-        // Search mode
         if visibleInput.trimmingCharacters(in: .whitespaces).isEmpty {
             let latestMeal = logService.todayEntries.map(\.mealIndex).max() ?? 0
             let alreadyOnNewMeal = currentMealIndex > latestMeal
@@ -1079,6 +1037,8 @@ struct HomeView: View {
 
 // MARK: - Day Summary
 struct DaySummaryView: View {
+    @EnvironmentObject var macroColors: MacroColors
+
     let cal: Float
     let protein: Float
     let carbs: Float
@@ -1125,9 +1085,9 @@ struct DaySummaryView: View {
             .padding(.bottom, 10)
 
             HStack(spacing: 16) {
-                MacroBar(label: "Protein", value: protein, goal: proteinGoal, color: .proteinColor)
-                MacroBar(label: "Carbs", value: carbs, goal: carbGoal, color: .carbColor)
-                MacroBar(label: "Fat", value: fat, goal: fatGoal, color: .fatColor)
+                MacroBar(label: "Protein", value: protein, goal: proteinGoal, color: macroColors.protein)
+                MacroBar(label: "Carbs", value: carbs, goal: carbGoal, color: macroColors.carbs)
+                MacroBar(label: "Fat", value: fat, goal: fatGoal, color: macroColors.fat)
             }
         }
         .padding(.horizontal, 14)
@@ -1179,6 +1139,8 @@ struct MacroBar: View {
 
 // MARK: - Food Entry Row
 struct FoodEntryRow: View {
+    @EnvironmentObject var macroColors: MacroColors
+
     let entry: FoodLogEntry
     let onRemove: () -> Void
 
@@ -1203,13 +1165,13 @@ struct FoodEntryRow: View {
                         .foregroundColor(.white.opacity(0.4))
                     Text("\(Int(entry.protein))p")
                         .font(.monoSmall)
-                        .foregroundColor(.proteinColor)
+                        .foregroundColor(macroColors.protein)
                     Text("\(Int(entry.carbs))c")
                         .font(.monoSmall)
-                        .foregroundColor(.carbColor)
+                        .foregroundColor(macroColors.carbs)
                     Text("\(Int(entry.fat))f")
                         .font(.monoSmall)
-                        .foregroundColor(.fatColor)
+                        .foregroundColor(macroColors.fat)
                 }
             }
 
@@ -1228,6 +1190,8 @@ struct FoodEntryRow: View {
 
 // MARK: - Suggestion Dropdown
 struct SuggestionDropdown: View {
+    @EnvironmentObject var macroColors: MacroColors
+
     let suggestions: [Food]
     let onSelect: (Food) -> Void
 
@@ -1256,13 +1220,13 @@ struct SuggestionDropdown: View {
                                 .foregroundColor(.white.opacity(0.35))
                             Text("\(Int(food.proteinPerServing))p")
                                 .font(.monoTiny)
-                                .foregroundColor(.proteinColor)
+                                .foregroundColor(macroColors.protein)
                             Text("\(Int(food.carbsPerServing))c")
                                 .font(.monoTiny)
-                                .foregroundColor(.carbColor)
+                                .foregroundColor(macroColors.carbs)
                             Text("\(Int(food.fatPerServing))f")
                                 .font(.monoTiny)
-                                .foregroundColor(.fatColor)
+                                .foregroundColor(macroColors.fat)
                         }
                     }
                     .padding(.horizontal, 16)
