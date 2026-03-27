@@ -9,17 +9,6 @@ struct SettingsView: View {
     @State private var carbsPct: Double = 40
     @State private var fatPct: Double = 30
     @State private var isSaving = false
-    @State private var splitMode: SplitMode = .waterfall
-
-    enum SplitMode: String, CaseIterable {
-        case waterfall = "Waterfall"
-        case lockable = "Lock"
-    }
-
-    // Lock state for lockable mode
-    @State private var proteinLocked = false
-    @State private var carbsLocked = false
-    @State private var fatLocked = false
 
     private var calGoal: Int { Int(calText) ?? 2200 }
     private var proteinGrams: Int { Int(Double(calGoal) * proteinPct / 100.0 / 4.0) }
@@ -80,47 +69,18 @@ struct SettingsView: View {
 
                         // Macro split
                         VStack(alignment: .leading, spacing: 0) {
-                            HStack {
-                                Text("MACRO SPLIT")
-                                    .font(.system(size: 11, weight: .semibold))
-                                    .foregroundColor(.textMuted)
-                                    .tracking(0.8)
-
-                                Spacer()
-
-                                // Mode toggle
-                                HStack(spacing: 0) {
-                                    ForEach(SplitMode.allCases, id: \.self) { mode in
-                                        Button {
-                                            withAnimation(.easeOut(duration: 0.2)) {
-                                                splitMode = mode
-                                            }
-                                        } label: {
-                                            Text(mode.rawValue)
-                                                .font(.system(size: 10, weight: .semibold))
-                                                .foregroundColor(splitMode == mode ? .white : .textMuted)
-                                                .padding(.horizontal, 10)
-                                                .padding(.vertical, 4)
-                                                .background(splitMode == mode ? Color.white.opacity(0.08) : Color.clear)
-                                                .cornerRadius(6)
-                                        }
-                                    }
-                                }
-                                .background(Color.white.opacity(0.03))
-                                .cornerRadius(8)
-                            }
-                            .padding(.bottom, 14)
+                            Text("MACRO SPLIT")
+                                .font(.system(size: 11, weight: .semibold))
+                                .foregroundColor(.textMuted)
+                                .tracking(0.8)
+                                .padding(.bottom, 14)
 
                             // Stacked bar preview
                             stackedBar
                                 .padding(.bottom, 18)
 
                             // Sliders
-                            if splitMode == .waterfall {
-                                waterfallSliders
-                            } else {
-                                lockableSliders
-                            }
+                            waterfallSliders
                         }
                         .padding(.horizontal, 16)
                         .padding(.vertical, 14)
@@ -195,7 +155,7 @@ struct SettingsView: View {
         .frame(height: 6)
     }
 
-    // MARK: - Waterfall mode (P → C → F auto-fills)
+    // MARK: - Waterfall sliders (P → C → F auto-fills)
     private var waterfallSliders: some View {
         VStack(spacing: 0) {
             MacroSliderRow(
@@ -203,8 +163,6 @@ struct SettingsView: View {
                 pct: $proteinPct,
                 grams: proteinGrams,
                 color: .proteinColor,
-                locked: false,
-                onLockTap: nil,
                 onChanged: {
                     proteinPct = min(max(round(proteinPct), 5), 90)
                     let remaining = 100.0 - proteinPct
@@ -222,8 +180,6 @@ struct SettingsView: View {
                 pct: $carbsPct,
                 grams: carbsGrams,
                 color: .carbColor,
-                locked: false,
-                onLockTap: nil,
                 onChanged: {
                     let maxCarbs = 100.0 - proteinPct - 5
                     carbsPct = min(max(round(carbsPct), 5), maxCarbs)
@@ -241,123 +197,6 @@ struct SettingsView: View {
                 color: .fatColor,
                 hint: "remainder"
             )
-        }
-    }
-
-    // MARK: - Lockable mode (lock any, others adjust)
-    private var lockableSliders: some View {
-        VStack(spacing: 0) {
-            MacroSliderRow(
-                label: "Protein",
-                pct: $proteinPct,
-                grams: proteinGrams,
-                color: .proteinColor,
-                locked: proteinLocked,
-                onLockTap: { proteinLocked.toggle() },
-                onChanged: { adjustLockable(changed: .protein) }
-            )
-
-            macroDiv
-
-            MacroSliderRow(
-                label: "Carbs",
-                pct: $carbsPct,
-                grams: carbsGrams,
-                color: .carbColor,
-                locked: carbsLocked,
-                onLockTap: { carbsLocked.toggle() },
-                onChanged: { adjustLockable(changed: .carbs) }
-            )
-
-            macroDiv
-
-            MacroSliderRow(
-                label: "Fat",
-                pct: $fatPct,
-                grams: fatGrams,
-                color: .fatColor,
-                locked: fatLocked,
-                onLockTap: { fatLocked.toggle() },
-                onChanged: { adjustLockable(changed: .fat) }
-            )
-        }
-    }
-
-    enum MacroType { case protein, carbs, fat }
-
-    private func adjustLockable(changed: MacroType) {
-        let minPct: Double = 5
-
-        // Clamp the changed one
-        switch changed {
-        case .protein: proteinPct = min(max(round(proteinPct), minPct), 90)
-        case .carbs: carbsPct = min(max(round(carbsPct), minPct), 90)
-        case .fat: fatPct = min(max(round(fatPct), minPct), 90)
-        }
-
-        // Determine which are free to move
-        var free: [MacroType] = []
-        if changed != .protein && !proteinLocked { free.append(.protein) }
-        if changed != .carbs && !carbsLocked { free.append(.carbs) }
-        if changed != .fat && !fatLocked { free.append(.fat) }
-
-        let changedVal: Double = {
-            switch changed {
-            case .protein: return proteinPct
-            case .carbs: return carbsPct
-            case .fat: return fatPct
-            }
-        }()
-
-        // Locked values (excluding the one being changed)
-        var lockedTotal: Double = 0
-        if changed != .protein && proteinLocked { lockedTotal += proteinPct }
-        if changed != .carbs && carbsLocked { lockedTotal += carbsPct }
-        if changed != .fat && fatLocked { lockedTotal += fatPct }
-
-        let remainder = 100.0 - changedVal - lockedTotal
-
-        if free.count == 2 {
-            let freeTotal = free.reduce(0.0) { sum, m in
-                switch m {
-                case .protein: return sum + proteinPct
-                case .carbs: return sum + carbsPct
-                case .fat: return sum + fatPct
-                }
-            }
-            for m in free {
-                let currentVal: Double = {
-                    switch m {
-                    case .protein: return proteinPct
-                    case .carbs: return carbsPct
-                    case .fat: return fatPct
-                    }
-                }()
-                let newVal = freeTotal > 0
-                    ? max(round(remainder * currentVal / freeTotal), minPct)
-                    : max(round(remainder / 2), minPct)
-                switch m {
-                case .protein: proteinPct = newVal
-                case .carbs: carbsPct = newVal
-                case .fat: fatPct = newVal
-                }
-            }
-            // Fix rounding
-            let total = proteinPct + carbsPct + fatPct
-            if total != 100, let last = free.last {
-                switch last {
-                case .protein: proteinPct += (100.0 - total)
-                case .carbs: carbsPct += (100.0 - total)
-                case .fat: fatPct += (100.0 - total)
-                }
-            }
-        } else if free.count == 1 {
-            let newVal = max(remainder, minPct)
-            switch free[0] {
-            case .protein: proteinPct = newVal
-            case .carbs: carbsPct = newVal
-            case .fat: fatPct = newVal
-            }
         }
     }
 
@@ -392,22 +231,11 @@ struct MacroSliderRow: View {
     @Binding var pct: Double
     let grams: Int
     let color: Color
-    let locked: Bool
-    let onLockTap: (() -> Void)?
     let onChanged: () -> Void
 
     var body: some View {
         VStack(spacing: 8) {
             HStack {
-                if let onLockTap {
-                    Button(action: onLockTap) {
-                        Image(systemName: locked ? "lock.fill" : "lock.open")
-                            .font(.system(size: 10, weight: .medium))
-                            .foregroundColor(locked ? color.opacity(0.8) : .white.opacity(0.15))
-                            .frame(width: 20, height: 20)
-                    }
-                }
-
                 Text(label)
                     .font(.system(size: 15))
                     .foregroundColor(.textPrimary)
@@ -432,13 +260,12 @@ struct MacroSliderRow: View {
                     Capsule()
                         .fill(Color.white.opacity(0.06))
                     Capsule()
-                        .fill(locked ? color.opacity(0.25) : color.opacity(0.5))
+                        .fill(color.opacity(0.5))
                         .frame(width: geo.size.width * pct / 100.0)
                 }
                 .frame(height: 4)
                 .contentShape(Rectangle())
                 .gesture(
-                    locked ? nil :
                     DragGesture(minimumDistance: 0)
                         .onChanged { value in
                             let newPct = Double(value.location.x / geo.size.width) * 100.0
@@ -449,7 +276,6 @@ struct MacroSliderRow: View {
             }
             .frame(height: 4)
         }
-        .opacity(locked ? 0.7 : 1.0)
     }
 }
 
