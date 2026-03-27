@@ -13,10 +13,11 @@ struct MacroChartEntry: Identifiable {
 // MARK: - Analytics View
 struct AnalyticsView: View {
     @EnvironmentObject var authService: AuthService
+    @EnvironmentObject var macroColors: MacroColors
     @Environment(\.dismiss) var dismiss
 
     @State private var chartEntries: [MacroChartEntry] = []
-    @State private var goalMetDays: Set<Int> = []   // day-of-month ints where goal was met
+    @State private var goalMetDays: Set<Int> = []
     @State private var isLoading = true
 
     private var calGoal: Float { Float(authService.profile?.calGoal ?? 2200) }
@@ -26,7 +27,6 @@ struct AnalyticsView: View {
             Color.bgPrimary.ignoresSafeArea()
 
             VStack(alignment: .leading, spacing: 0) {
-                // Header
                 HStack {
                     Text("Analytics")
                         .font(.headerDay)
@@ -59,7 +59,7 @@ struct AnalyticsView: View {
         }
     }
 
-    // MARK: - Chart card (fixed size, loading/empty states inline)
+    // MARK: - Chart card
     private var chartCard: some View {
         VStack(alignment: .leading, spacing: 0) {
             HStack {
@@ -72,9 +72,9 @@ struct AnalyticsView: View {
 
                 if !chartEntries.isEmpty {
                     HStack(spacing: 10) {
-                        legendDot("Protein", color: .proteinColor)
-                        legendDot("Carbs", color: .carbColor)
-                        legendDot("Fat", color: .fatColor)
+                        legendDot("Protein", color: macroColors.protein)
+                        legendDot("Carbs", color: macroColors.carbs)
+                        legendDot("Fat", color: macroColors.fat)
                     }
                 }
             }
@@ -107,9 +107,9 @@ struct AnalyticsView: View {
                     .foregroundStyle(by: .value("Macro", entry.macro))
                 }
                 .chartForegroundStyleScale([
-                    "Protein": Color.proteinColor.opacity(0.6),
-                    "Carbs": Color.carbColor.opacity(0.6),
-                    "Fat": Color.fatColor.opacity(0.6)
+                    "Protein": macroColors.protein.opacity(0.6),
+                    "Carbs": macroColors.carbs.opacity(0.6),
+                    "Fat": macroColors.fat.opacity(0.6)
                 ])
                 .chartYScale(domain: 0 ... chartYMax)
                 .chartXAxis {
@@ -224,7 +224,7 @@ struct AnalyticsView: View {
         let firstOfMonth = cal.date(from: components)!
         let range = cal.range(of: .day, in: .month, for: firstOfMonth)!
         let daysInMonth = range.count
-        let firstWeekday = cal.component(.weekday, from: firstOfMonth) // 1 = Sunday
+        let firstWeekday = cal.component(.weekday, from: firstOfMonth)
         let todayDay = cal.component(.day, from: today)
 
         return VStack(alignment: .leading, spacing: 0) {
@@ -235,7 +235,6 @@ struct AnalyticsView: View {
                 .padding(.bottom, 14)
 
             HStack(alignment: .top, spacing: 0) {
-                // Left side — count + label
                 VStack(alignment: .leading, spacing: 4) {
                     Text("\(goalMetDays.count)")
                         .font(.system(size: 42, weight: .medium, design: .monospaced))
@@ -249,7 +248,6 @@ struct AnalyticsView: View {
 
                 Spacer()
 
-                // Right side — dot grid calendar
                 dotGrid(
                     daysInMonth: daysInMonth,
                     firstWeekday: firstWeekday,
@@ -266,15 +264,13 @@ struct AnalyticsView: View {
     // MARK: - Dot grid
     private func dotGrid(daysInMonth: Int, firstWeekday: Int, todayDay: Int) -> some View {
         let columns = Array(repeating: GridItem(.fixed(10), spacing: 8), count: 7)
-        let offset = firstWeekday - 1  // empty slots before day 1
+        let offset = firstWeekday - 1
 
         return LazyVGrid(columns: columns, spacing: 8) {
-            // Empty cells for offset
             ForEach(0..<offset, id: \.self) { _ in
                 Color.clear.frame(width: 10, height: 10)
             }
 
-            // Day cells
             ForEach(1...daysInMonth, id: \.self) { day in
                 let isMet = goalMetDays.contains(day)
                 let isToday = day == todayDay
@@ -282,7 +278,6 @@ struct AnalyticsView: View {
 
                 ZStack {
                     if isToday {
-                        // Today — ring style
                         Circle()
                             .strokeBorder(isMet ? Color.white : Color.white.opacity(0.3), lineWidth: 1.5)
                             .frame(width: 10, height: 10)
@@ -292,12 +287,10 @@ struct AnalyticsView: View {
                                 .frame(width: 5, height: 5)
                         }
                     } else if isMet {
-                        // Goal met — bright dot
                         Circle()
                             .fill(Color.white.opacity(0.9))
                             .frame(width: 10, height: 10)
                     } else {
-                        // Not met or future — dim dot
                         Circle()
                             .fill(Color.white.opacity(isFuture ? 0.06 : 0.12))
                             .frame(width: 10, height: 10)
@@ -324,7 +317,6 @@ struct AnalyticsView: View {
         guard let userId = authService.userId else { return }
 
         do {
-            // Fetch entries covering both the 30-day chart window and the current month
             let cal = Calendar.current
             let today = Date()
             let components = cal.dateComponents([.year, .month], from: today)
@@ -346,7 +338,6 @@ struct AnalyticsView: View {
                 .execute()
                 .value
 
-            // Aggregate by date
             var grouped: [String: (protein: Float, carbs: Float, fat: Float, cal: Float)] = [:]
             for entry in entries {
                 var current = grouped[entry.logDate] ?? (0, 0, 0, 0)
@@ -357,7 +348,6 @@ struct AnalyticsView: View {
                 grouped[entry.logDate] = current
             }
 
-            // Build chart entries (last 30 days)
             var chart: [MacroChartEntry] = []
             for daysAgo in stride(from: 29, through: 0, by: -1) {
                 let date = cal.date(byAdding: .day, value: -daysAgo, to: cal.startOfDay(for: today))!
@@ -373,15 +363,13 @@ struct AnalyticsView: View {
                 chart.append(MacroChartEntry(date: date, macro: "Protein", calories: proteinCal))
             }
 
-            // Build goal-met days for current month
             let goal = calGoal
             var metDays: Set<Int> = []
-            let monthString = formatter.string(from: firstOfMonth).prefix(7) // "2026-03"
+            let monthString = formatter.string(from: firstOfMonth).prefix(7)
 
             for (dateStr, data) in grouped {
                 guard dateStr.hasPrefix(String(monthString)) else { continue }
                 if abs(data.cal - goal) <= 100 {
-                    // Extract day number
                     if let date = formatter.date(from: dateStr) {
                         let day = cal.component(.day, from: date)
                         metDays.insert(day)
