@@ -3,6 +3,7 @@ import SwiftUI
 @main
 struct SimplyApp: App {
     @StateObject private var authService = AuthService()
+    @StateObject private var macroColors = MacroColors()
 
     var body: some Scene {
         WindowGroup {
@@ -19,6 +20,7 @@ struct SimplyApp: App {
                 }
             }
             .environmentObject(authService)
+            .environmentObject(macroColors)
             .preferredColorScheme(.dark)
         }
     }

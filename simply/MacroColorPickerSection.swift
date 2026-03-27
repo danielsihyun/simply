@@ -62,7 +62,6 @@ struct MacroSwatchRow: View {
 
                 Spacer()
 
-                // Current color preview
                 Circle()
                     .fill(Color(hex: selectedHex))
                     .frame(width: 12, height: 12)

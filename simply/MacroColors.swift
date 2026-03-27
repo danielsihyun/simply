@@ -1,4 +1,5 @@
 import SwiftUI
+import Combine
 
 /// Persisted macro colors backed by @AppStorage.
 /// Inject as .environmentObject(macroColors) at the app root.
@@ -39,19 +40,5 @@ class MacroColors: ObservableObject {
     var fatHexValue: String {
         get { fatHex }
         set { objectWillChange.send(); fatHex = newValue }
-    }
-}
-
-// MARK: - Hex → Color
-extension Color {
-    init(hex: String) {
-        let h = hex.trimmingCharacters(in: CharacterSet(charactersIn: "#"))
-        var rgb: UInt64 = 0
-        Scanner(string: h).scanHexInt64(&rgb)
-        self.init(
-            red:   Double((rgb >> 16) & 0xFF) / 255,
-            green: Double((rgb >> 8)  & 0xFF) / 255,
-            blue:  Double(rgb         & 0xFF) / 255
-        )
     }
 }
