@@ -2,6 +2,7 @@ import SwiftUI
 
 struct SettingsView: View {
     @EnvironmentObject var authService: AuthService
+    @EnvironmentObject var macroColors: MacroColors
     @Environment(\.dismiss) var dismiss
 
     @State private var calText: String = ""
@@ -75,17 +76,18 @@ struct SettingsView: View {
                                 .tracking(0.8)
                                 .padding(.bottom, 14)
 
-                            // Stacked bar preview
                             stackedBar
                                 .padding(.bottom, 18)
 
-                            // Sliders
                             waterfallSliders
                         }
                         .padding(.horizontal, 16)
                         .padding(.vertical, 14)
                         .background(Color.bgCard)
                         .cornerRadius(14)
+
+                        // Macro colors
+                        MacroColorPickerSection()
 
                         // Account section
                         VStack(alignment: .leading, spacing: 0) {
@@ -139,13 +141,13 @@ struct SettingsView: View {
         GeometryReader { geo in
             HStack(spacing: 1.5) {
                 RoundedRectangle(cornerRadius: 3)
-                    .fill(Color.proteinColor.opacity(0.8))
+                    .fill(macroColors.protein.opacity(0.8))
                     .frame(width: max(geo.size.width * proteinPct / 100.0, 4))
                 RoundedRectangle(cornerRadius: 3)
-                    .fill(Color.carbColor.opacity(0.8))
+                    .fill(macroColors.carbs.opacity(0.8))
                     .frame(width: max(geo.size.width * carbsPct / 100.0, 4))
                 RoundedRectangle(cornerRadius: 3)
-                    .fill(Color.fatColor.opacity(0.8))
+                    .fill(macroColors.fat.opacity(0.8))
                     .frame(width: max(geo.size.width * fatPct / 100.0, 4))
             }
             .animation(.easeOut(duration: 0.15), value: proteinPct)
@@ -155,14 +157,14 @@ struct SettingsView: View {
         .frame(height: 6)
     }
 
-    // MARK: - Waterfall sliders (P → C → F auto-fills)
+    // MARK: - Waterfall sliders
     private var waterfallSliders: some View {
         VStack(spacing: 0) {
             MacroSliderRow(
                 label: "Protein",
                 pct: $proteinPct,
                 grams: proteinGrams,
-                color: .proteinColor,
+                color: macroColors.protein,
                 onChanged: {
                     proteinPct = min(max(round(proteinPct), 5), 90)
                     let remaining = 100.0 - proteinPct
@@ -179,7 +181,7 @@ struct SettingsView: View {
                 label: "Carbs",
                 pct: $carbsPct,
                 grams: carbsGrams,
-                color: .carbColor,
+                color: macroColors.carbs,
                 onChanged: {
                     let maxCarbs = 100.0 - proteinPct - 5
                     carbsPct = min(max(round(carbsPct), 5), maxCarbs)
@@ -189,12 +191,11 @@ struct SettingsView: View {
 
             macroDiv
 
-            // Fat is always the remainder
             MacroReadonlyRow(
                 label: "Fat",
                 pct: fatPct,
                 grams: fatGrams,
-                color: .fatColor,
+                color: macroColors.fat,
                 hint: "remainder"
             )
         }
@@ -279,7 +280,7 @@ struct MacroSliderRow: View {
     }
 }
 
-// MARK: - Macro Readonly Row (for waterfall remainder)
+// MARK: - Macro Readonly Row
 struct MacroReadonlyRow: View {
     let label: String
     let pct: Double
