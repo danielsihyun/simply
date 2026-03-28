@@ -220,14 +220,42 @@ final class LogService: ObservableObject {
     }
 
     // MARK: - Update streak via Edge Function
-    private func updateStreak(logDate: String) async {
-        do {
-            let _: Data = try await supabase.functions.invoke(
-                "update-streak",
-                options: .init(body: ["log_date": logDate])
-            )
-        } catch {
-            print("Streak update error: \(error)")
+        private func updateStreak(logDate: String) async {
+            do {
+                let _: Data = try await supabase.functions.invoke(
+                    "update-streak",
+                    options: .init(body: ["log_date": logDate])
+                )
+            } catch {
+                print("Streak update error: \(error)")
+            }
         }
-    }
-}
+
+        // MARK: - Copy a single entry to a new date/meal
+        @MainActor
+        func copyEntry(_ entry: FoodLogEntry, userId: UUID, toDate: Date, mealIndex: Int) async {
+            let dateStr = dateString(for: toDate)
+
+            let newEntry: [String: AnyJSON] = [
+                "user_id": .string(userId.uuidString),
+                "food_id": .string(entry.foodId.uuidString),
+                "food_name": .string(entry.foodName),
+                "grams": .double(Double(entry.grams)),
+                "calories": .double(Double(entry.calories)),
+                "protein": .double(Double(entry.protein)),
+                "carbs": .double(Double(entry.carbs)),
+                "fat": .double(Double(entry.fat)),
+                "meal_index": .integer(mealIndex),
+                "log_date": .string(dateStr)
+            ]
+
+            do {
+                try await supabase
+                    .from("food_log")
+                    .insert(newEntry)
+                    .execute()
+            } catch {
+                print("Copy entry error: \(error)")
+            }
+        }
+    }  // <-- end of LogService class
