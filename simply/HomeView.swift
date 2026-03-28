@@ -365,19 +365,13 @@ struct HomeView: View {
         Button {
             copyYesterdayMeal()
         } label: {
-            if isCopyingMeal {
-                ProgressView()
-                    .scaleEffect(0.5)
-                    .frame(width: 20, height: 20)
-                    .tint(.textMuted)
-            } else {
-                Image(systemName: "doc.on.doc")
-                    .font(.system(size: 10, weight: .medium))
-                    .foregroundColor(.textMuted)
-                    .frame(width: 20, height: 20)
-            }
+            Image(systemName: "doc.on.doc")
+                .font(.system(size: 10, weight: .medium))
+                .foregroundColor(.textMuted)
+                .frame(width: 20, height: 20)
         }
         .disabled(isCopyingMeal)
+        .opacity(isCopyingMeal ? 0.4 : 1.0)
     }
 
     // MARK: - Header
