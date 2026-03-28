@@ -238,7 +238,7 @@ final class LogService: ObservableObject {
 
         let newEntry: [String: AnyJSON] = [
             "user_id": .string(userId.uuidString),
-            "food_id": .string(entry.foodId.uuidString),
+            "food_id": entry.foodId.map { .string($0.uuidString) } ?? .null,
             "food_name": .string(entry.foodName),
             "grams": .double(Double(entry.grams)),
             "calories": .double(Double(entry.calories)),
