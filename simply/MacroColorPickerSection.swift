@@ -23,6 +23,7 @@ struct MacroColorPickerSection: View {
                 Spacer()
                 colorCircle(label: "Fat", target: .fat, hex: macroColors.fatHexValue)
             }
+            .padding(.horizontal, 40)
 
             // Palette row — slides in when editing
             if let target = editing {
