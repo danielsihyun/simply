@@ -365,24 +365,17 @@ struct HomeView: View {
         Button {
             copyYesterdayMeal()
         } label: {
-            HStack(spacing: 4) {
-                if isCopyingMeal {
-                    ProgressView()
-                        .scaleEffect(0.5)
-                        .frame(width: 12, height: 12)
-                        .tint(.textMuted)
-                } else {
-                    Image(systemName: "doc.on.doc")
-                        .font(.system(size: 10, weight: .medium))
-                }
-                Text("yesterday")
+            if isCopyingMeal {
+                ProgressView()
+                    .scaleEffect(0.5)
+                    .frame(width: 20, height: 20)
+                    .tint(.textMuted)
+            } else {
+                Image(systemName: "doc.on.doc")
                     .font(.system(size: 10, weight: .medium))
+                    .foregroundColor(.textMuted)
+                    .frame(width: 20, height: 20)
             }
-            .foregroundColor(.textMuted)
-            .padding(.horizontal, 8)
-            .padding(.vertical, 4)
-            .background(Color.white.opacity(0.05))
-            .cornerRadius(6)
         }
         .disabled(isCopyingMeal)
     }
