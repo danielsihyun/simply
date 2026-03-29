@@ -131,6 +131,14 @@ struct HomeView: View {
         return food.macros(forGrams: previewGrams)
     }
 
+    /// Whether the pending item belongs to a new meal (beyond existing entries)
+    private var pendingIsNewMeal: Bool {
+        guard mode == .grams, pendingFood != nil else { return false }
+        if logService.todayEntries.isEmpty { return false }
+        let latestMeal = logService.todayEntries.map(\.mealIndex).max() ?? 0
+        return currentMealIndex > latestMeal
+    }
+
     var body: some View {
         ZStack(alignment: .bottom) {
             Color.bgPrimary.ignoresSafeArea()
@@ -153,53 +161,6 @@ struct HomeView: View {
                                 .padding(.bottom, 24)
 
                                 mealEntriesView
-
-                                // New meal divider — shows after double-enter
-                                if !logService.todayEntries.isEmpty {
-                                    let latestMeal = logService.todayEntries.map(\.mealIndex).max() ?? 0
-                                    if currentMealIndex > latestMeal {
-                                        let existingMealCount = groupedEntries().count
-
-                                        Rectangle()
-                                            .fill(Color.white.opacity(0.04))
-                                            .frame(height: 1)
-                                            .padding(.top, 9)
-                                            .padding(.bottom, 8)
-
-                                        HStack {
-                                            Text("Meal \(existingMealCount + 1)")
-                                                .font(.labelMealHeader)
-                                                .foregroundColor(.textMuted)
-                                                .textCase(.uppercase)
-                                                .tracking(0.8)
-
-                                            Spacer()
-
-                                            copyYesterdayButton
-                                        }
-                                        .padding(.bottom, 2)
-                                    }
-                                }
-
-                                // Empty state — Meal 1 with copy button
-                                if logService.todayEntries.isEmpty {
-                                    HStack {
-                                        Text("Meal 1")
-                                            .font(.labelMealHeader)
-                                            .foregroundColor(.textMuted)
-                                            .textCase(.uppercase)
-                                            .tracking(0.8)
-
-                                        Spacer()
-
-                                        copyYesterdayButton
-                                    }
-                                    .padding(.bottom, 2)
-                                }
-
-                                if mode == .grams, let food = pendingFood {
-                                    pendingFoodRow(food: food)
-                                }
                             }
                             .id(selectedDate)
                             .transition(.asymmetric(
@@ -277,7 +238,7 @@ struct HomeView: View {
         )
     }
 
-    // MARK: - Pending food row (matches FoodEntryRow layout exactly)
+    // MARK: - Pending food row (identical layout to FoodEntryRow)
     @ViewBuilder
     private func pendingFoodRow(food: Food) -> some View {
         let grams = Float(inputText) ?? food.servingGrams
@@ -404,62 +365,149 @@ struct HomeView: View {
         .padding(.bottom, 16)
     }
 
-    // MARK: - Meal entries
+    // MARK: - Meal entries (pending item rendered inline)
     private var mealEntriesView: some View {
         let groups = groupedEntries()
-        return ForEach(Array(groups.enumerated()), id: \.offset) { mealIdx, group in
-            VStack(alignment: .leading, spacing: 0) {
-                HStack {
-                    Text("Meal \(mealIdx + 1)")
-                        .font(.labelMealHeader)
-                        .foregroundColor(.textMuted)
-                        .textCase(.uppercase)
-                        .tracking(0.8)
+        let hasPending = mode == .grams && pendingFood != nil
+        let latestMeal = logService.todayEntries.map(\.mealIndex).max() ?? 0
 
-                    Spacer()
+        return Group {
+            // Case 1: No entries at all
+            if groups.isEmpty {
+                VStack(alignment: .leading, spacing: 0) {
+                    HStack {
+                        Text("Meal 1")
+                            .font(.labelMealHeader)
+                            .foregroundColor(.textMuted)
+                            .textCase(.uppercase)
+                            .tracking(0.8)
 
-                    let mealCal = group.reduce(0) { $0 + $1.calories }
-                    Text("\(Int(mealCal)) cal")
-                        .font(.monoTiny)
-                        .foregroundColor(.textVeryMuted)
-                }
-                .padding(.bottom, 2)
+                        Spacer()
 
-                ForEach(group) { entry in
-                    FoodEntryRow(
-                        entry: entry,
-                        isEditing: editingEntryId == entry.id,
-                        onTapToEdit: {
-                            editingEntryId = entry.id
-                        },
-                        onCancelEdit: {
-                            editingEntryId = nil
-                        },
-                        onRemove: {
-                            Task {
-                                await logService.deleteEntry(entry)
-                                await authService.loadProfile()
-                            }
-                        },
-                        onUpdateGrams: { newGrams in
-                            editingEntryId = nil
-                            Task {
-                                await logService.updateEntryGrams(entry, newGrams: newGrams)
-                                await authService.loadProfile()
-                            }
+                        if !hasPending {
+                            copyYesterdayButton
                         }
-                    )
+                    }
+                    .padding(.bottom, 2)
+
+                    // Pending item in empty state
+                    if hasPending, let food = pendingFood {
+                        pendingFoodRow(food: food)
+                    }
+                }
+            } else {
+                // Case 2: Has entries — render each meal group
+                ForEach(Array(groups.enumerated()), id: \.offset) { mealIdx, group in
+                    let groupMealIndex = group.first?.mealIndex ?? 0
+                    let isLastGroup = mealIdx == groups.count - 1
+                    // Pending belongs to this existing meal group
+                    let pendingBelongsHere = hasPending && !pendingIsNewMeal && isLastGroup
+
+                    VStack(alignment: .leading, spacing: 0) {
+                        HStack {
+                            Text("Meal \(mealIdx + 1)")
+                                .font(.labelMealHeader)
+                                .foregroundColor(.textMuted)
+                                .textCase(.uppercase)
+                                .tracking(0.8)
+
+                            Spacer()
+
+                            let mealCal = group.reduce(0) { $0 + $1.calories }
+                            Text("\(Int(mealCal)) cal")
+                                .font(.monoTiny)
+                                .foregroundColor(.textVeryMuted)
+                        }
+                        .padding(.bottom, 2)
+
+                        ForEach(group) { entry in
+                            FoodEntryRow(
+                                entry: entry,
+                                isEditing: editingEntryId == entry.id,
+                                onTapToEdit: {
+                                    editingEntryId = entry.id
+                                },
+                                onCancelEdit: {
+                                    editingEntryId = nil
+                                },
+                                onRemove: {
+                                    Task {
+                                        await logService.deleteEntry(entry)
+                                        await authService.loadProfile()
+                                    }
+                                },
+                                onUpdateGrams: { newGrams in
+                                    editingEntryId = nil
+                                    Task {
+                                        await logService.updateEntryGrams(entry, newGrams: newGrams)
+                                        await authService.loadProfile()
+                                    }
+                                }
+                            )
+                        }
+
+                        // Pending item appended to the last existing meal group
+                        if pendingBelongsHere, let food = pendingFood {
+                            pendingFoodRow(food: food)
+                        }
+
+                        // Divider between meal groups (not after last)
+                        if !isLastGroup || pendingIsNewMeal {
+                            Rectangle()
+                                .fill(Color.white.opacity(0.04))
+                                .frame(height: 1)
+                                .padding(.top, 9)
+                                .padding(.bottom, 8)
+                        }
+                    }
+                    .padding(.bottom, 4)
                 }
 
-                if mealIdx < groups.count - 1 {
+                // Case 3: Pending item starts a new meal
+                if pendingIsNewMeal, let food = pendingFood {
+                    VStack(alignment: .leading, spacing: 0) {
+                        let existingMealCount = groups.count
+
+                        HStack {
+                            Text("Meal \(existingMealCount + 1)")
+                                .font(.labelMealHeader)
+                                .foregroundColor(.textMuted)
+                                .textCase(.uppercase)
+                                .tracking(0.8)
+
+                            Spacer()
+                        }
+                        .padding(.bottom, 2)
+
+                        pendingFoodRow(food: food)
+                    }
+                    .padding(.bottom, 4)
+                }
+
+                // New meal divider (double-enter, no pending)
+                if !hasPending && currentMealIndex > latestMeal {
+                    let existingMealCount = groups.count
+
                     Rectangle()
                         .fill(Color.white.opacity(0.04))
                         .frame(height: 1)
                         .padding(.top, 9)
                         .padding(.bottom, 8)
+
+                    HStack {
+                        Text("Meal \(existingMealCount + 1)")
+                            .font(.labelMealHeader)
+                            .foregroundColor(.textMuted)
+                            .textCase(.uppercase)
+                            .tracking(0.8)
+
+                        Spacer()
+
+                        copyYesterdayButton
+                    }
+                    .padding(.bottom, 2)
                 }
             }
-            .padding(.bottom, 4)
         }
     }
 
