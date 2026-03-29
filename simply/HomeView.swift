@@ -194,6 +194,7 @@ struct HomeView: View {
         }
         .task {
             if let userId = authService.userId {
+                await authService.loadProfile()
                 await logService.loadEntries(userId: userId, date: selectedDate)
                 currentMealIndex = logService.todayEntries.map(\.mealIndex).max() ?? 0
                 logService.pushToWidget(profile: authService.profile)
