@@ -1225,6 +1225,7 @@ struct MacroBar: View {
 }
 
 // MARK: - Food Entry Row (with tap-to-edit grams)
+// MARK: - Food Entry Row (with tap-to-edit grams)
 struct FoodEntryRow: View {
     @EnvironmentObject var macroColors: MacroColors
 
@@ -1260,11 +1261,10 @@ struct FoodEntryRow: View {
 
                 HStack(spacing: 10) {
                     if isEditing {
-                        // Editable grams field
                         HStack(spacing: 1) {
                             TextField("\(Int(entry.grams))", text: $editText)
                                 .font(.labelSmall)
-                                .foregroundColor(.white)
+                                .foregroundColor(.textMuted)
                                 .keyboardType(.default)
                                 .autocorrectionDisabled()
                                 .textInputAutocapitalization(.never)
@@ -1280,10 +1280,6 @@ struct FoodEntryRow: View {
                                 .font(.labelSmall)
                                 .foregroundColor(.textMuted)
                         }
-                        .padding(.horizontal, 6)
-                        .padding(.vertical, 2)
-                        .background(Color.white.opacity(0.08))
-                        .cornerRadius(4)
                     } else {
                         Text("\(Int(entry.grams))g")
                             .font(.labelSmall)
@@ -1294,7 +1290,6 @@ struct FoodEntryRow: View {
                         .font(.labelSmall)
                         .foregroundColor(.white.opacity(0.1))
 
-                    // Show live-preview macros while editing, otherwise stored values
                     if isEditing, let editGrams = Float(editText), editGrams > 0 {
                         let preview = previewMacros(forGrams: editGrams)
                         Text("\(Int(preview.cal))")
@@ -1328,29 +1323,18 @@ struct FoodEntryRow: View {
 
             Spacer()
 
-            if isEditing {
-                HStack(spacing: 12) {
-                    Button(action: { onCancelEdit() }) {
-                        Text("×")
-                            .font(.system(size: 15))
-                            .foregroundColor(.white.opacity(0.25))
-                    }
-
-                    Button(action: { commitEdit() }) {
-                        Image(systemName: "checkmark")
-                            .font(.system(size: 12, weight: .semibold))
-                            .foregroundColor(.calBarBlue.opacity(0.8))
-                    }
+            Button(action: {
+                if isEditing {
+                    onCancelEdit()
+                } else {
+                    onRemove()
                 }
-                .padding(.top, 2)
-            } else {
-                Button(action: onRemove) {
-                    Text("×")
-                        .font(.system(size: 15))
-                        .foregroundColor(.white.opacity(0.12))
-                }
-                .padding(.top, 2)
+            }) {
+                Text("×")
+                    .font(.system(size: 15))
+                    .foregroundColor(.white.opacity(0.12))
             }
+            .padding(.top, 2)
         }
         .padding(.vertical, 5)
         .contentShape(Rectangle())
