@@ -309,7 +309,6 @@ struct HomeView: View {
             }
         }
         .onTapGesture {
-            // Dismiss any inline entry editing when tapping outside
             if editingEntryId != nil {
                 editingEntryId = nil
             }
@@ -1225,7 +1224,6 @@ struct MacroBar: View {
 }
 
 // MARK: - Food Entry Row (with tap-to-edit grams)
-// MARK: - Food Entry Row (with tap-to-edit grams)
 struct FoodEntryRow: View {
     @EnvironmentObject var macroColors: MacroColors
 
@@ -1260,8 +1258,8 @@ struct FoodEntryRow: View {
                     .foregroundColor(.textPrimary)
 
                 HStack(spacing: 10) {
-                    if isEditing {
-                        HStack(spacing: 1) {
+                    HStack(spacing: 1) {
+                        if isEditing {
                             TextField("\(Int(entry.grams))", text: $editText)
                                 .font(.labelSmall)
                                 .foregroundColor(.textMuted)
@@ -1275,13 +1273,13 @@ struct FoodEntryRow: View {
                                     commitEdit()
                                     return .handled
                                 }
-
-                            Text("g")
+                        } else {
+                            Text("\(Int(entry.grams))")
                                 .font(.labelSmall)
                                 .foregroundColor(.textMuted)
                         }
-                    } else {
-                        Text("\(Int(entry.grams))g")
+
+                        Text("g")
                             .font(.labelSmall)
                             .foregroundColor(.textMuted)
                     }
