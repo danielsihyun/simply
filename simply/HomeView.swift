@@ -198,95 +198,7 @@ struct HomeView: View {
                                 }
 
                                 if mode == .grams, let food = pendingFood {
-                                    let isFirstInMeal: Bool = {
-                                        if logService.todayEntries.isEmpty { return true }
-                                        let latestMeal = logService.todayEntries.map(\.mealIndex).max() ?? 0
-                                        return currentMealIndex > latestMeal
-                                    }()
-
-                                    HStack(alignment: .top) {
-                                        VStack(alignment: .leading, spacing: 2) {
-                                            Text(food.name.capitalized)
-                                                .font(.bodyFood)
-                                                .foregroundColor(.textPrimary)
-
-                                            HStack(spacing: 10) {
-                                                HStack(spacing: 1) {
-                                                    TextField(
-                                                        "\(Int(food.servingGrams))",
-                                                        text: $inputText
-                                                    )
-                                                    .font(.labelSmall)
-                                                    .foregroundColor(.textMuted)
-                                                    .keyboardType(.default)
-                                                    .autocorrectionDisabled()
-                                                    .textInputAutocapitalization(.never)
-                                                    .focused($gramsFocused)
-                                                    .transaction { $0.animation = nil }
-                                                    .onKeyPress(.return) {
-                                                        handleSubmit()
-                                                        return .handled
-                                                    }
-                                                    .onSubmit {
-                                                        handleSubmit()
-                                                        DispatchQueue.main.asyncAfter(deadline: .now() + 0.05) {
-                                                            inputFocused = true
-                                                        }
-                                                    }
-                                                    .fixedSize()
-
-                                                    Text("g")
-                                                        .font(.labelSmall)
-                                                        .foregroundColor(.textMuted)
-                                                }
-
-                                                Text("·")
-                                                    .font(.labelSmall)
-                                                    .foregroundColor(.white.opacity(0.1))
-
-                                                if let macros = previewMacros {
-                                                    Text("\(Int(macros.calories))")
-                                                        .font(.monoSmall)
-                                                        .foregroundColor(.white.opacity(0.4))
-                                                    Text("\(Int(macros.protein))p")
-                                                        .font(.monoSmall)
-                                                        .foregroundColor(macroColors.protein)
-                                                    Text("\(Int(macros.carbs))c")
-                                                        .font(.monoSmall)
-                                                        .foregroundColor(macroColors.carbs)
-                                                    Text("\(Int(macros.fat))f")
-                                                        .font(.monoSmall)
-                                                        .foregroundColor(macroColors.fat)
-                                                } else {
-                                                    let grams = Float(inputText) ?? food.servingGrams
-                                                    let fallbackMacros = food.macros(forGrams: grams)
-                                                    Text("\(Int(fallbackMacros.calories))")
-                                                        .font(.monoSmall)
-                                                        .foregroundColor(.white.opacity(0.4))
-                                                    Text("\(Int(fallbackMacros.protein))p")
-                                                        .font(.monoSmall)
-                                                        .foregroundColor(macroColors.protein)
-                                                    Text("\(Int(fallbackMacros.carbs))c")
-                                                        .font(.monoSmall)
-                                                        .foregroundColor(macroColors.carbs)
-                                                    Text("\(Int(fallbackMacros.fat))f")
-                                                        .font(.monoSmall)
-                                                        .foregroundColor(macroColors.fat)
-                                                }
-                                            }
-                                        }
-
-                                        Spacer()
-
-                                        Button(action: { cancelPending() }) {
-                                            Text("×")
-                                                .font(.system(size: 15))
-                                                .foregroundColor(.white.opacity(0.12))
-                                        }
-                                        .padding(.top, 2)
-                                    }
-                                    .padding(.vertical, 5)
-                                    .padding(.top, isFirstInMeal ? 0 : -4)
+                                    pendingFoodRow(food: food)
                                 }
                             }
                             .id(selectedDate)
@@ -363,6 +275,79 @@ struct HomeView: View {
                     }
                 }
         )
+    }
+
+    // MARK: - Pending food row (matches FoodEntryRow layout exactly)
+    @ViewBuilder
+    private func pendingFoodRow(food: Food) -> some View {
+        let grams = Float(inputText) ?? food.servingGrams
+        let macros = food.macros(forGrams: grams)
+
+        HStack(alignment: .top) {
+            VStack(alignment: .leading, spacing: 2) {
+                Text(food.name.capitalized)
+                    .font(.bodyFood)
+                    .foregroundColor(.textPrimary)
+
+                HStack(spacing: 10) {
+                    HStack(spacing: 1) {
+                        TextField(
+                            "\(Int(food.servingGrams))",
+                            text: $inputText
+                        )
+                        .font(.labelSmall)
+                        .foregroundColor(.textMuted)
+                        .keyboardType(.default)
+                        .autocorrectionDisabled()
+                        .textInputAutocapitalization(.never)
+                        .focused($gramsFocused)
+                        .transaction { $0.animation = nil }
+                        .onKeyPress(.return) {
+                            handleSubmit()
+                            return .handled
+                        }
+                        .onSubmit {
+                            handleSubmit()
+                            DispatchQueue.main.asyncAfter(deadline: .now() + 0.05) {
+                                inputFocused = true
+                            }
+                        }
+                        .fixedSize()
+
+                        Text("g")
+                            .font(.labelSmall)
+                            .foregroundColor(.textMuted)
+                    }
+
+                    Text("·")
+                        .font(.labelSmall)
+                        .foregroundColor(.white.opacity(0.1))
+
+                    Text("\(Int(macros.calories))")
+                        .font(.monoSmall)
+                        .foregroundColor(.white.opacity(0.4))
+                    Text("\(Int(macros.protein))p")
+                        .font(.monoSmall)
+                        .foregroundColor(macroColors.protein)
+                    Text("\(Int(macros.carbs))c")
+                        .font(.monoSmall)
+                        .foregroundColor(macroColors.carbs)
+                    Text("\(Int(macros.fat))f")
+                        .font(.monoSmall)
+                        .foregroundColor(macroColors.fat)
+                }
+            }
+
+            Spacer()
+
+            Button(action: { cancelPending() }) {
+                Text("×")
+                    .font(.system(size: 15))
+                    .foregroundColor(.white.opacity(0.12))
+            }
+            .padding(.top, 2)
+        }
+        .padding(.vertical, 5)
     }
 
     // MARK: - Copy Yesterday Button
