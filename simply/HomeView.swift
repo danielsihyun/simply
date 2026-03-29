@@ -435,6 +435,7 @@ struct HomeView: View {
                                     Task {
                                         await logService.deleteEntry(entry)
                                         await authService.loadProfile()
+                                        logService.pushToWidget(profile: authService.profile)
                                     }
                                 },
                                 onUpdateGrams: { newGrams in
@@ -442,9 +443,7 @@ struct HomeView: View {
                                     Task {
                                         await logService.updateEntryGrams(entry, newGrams: newGrams)
                                         await authService.loadProfile()
-                                    }
-                                    DispatchQueue.main.asyncAfter(deadline: .now() + 0.05) {
-                                        inputFocused = true
+                                        logService.pushToWidget(profile: authService.profile)
                                     }
                                 }
                             )
@@ -873,6 +872,7 @@ struct HomeView: View {
 
             await logService.loadEntries(userId: userId, date: targetDate)
             await authService.loadProfile()
+            logService.pushToWidget(profile: authService.profile)
 
             await MainActor.run { isCopyingMeal = false }
         }
@@ -987,6 +987,7 @@ struct HomeView: View {
                     Task {
                         await logService.deleteEntry(lastEntry)
                         await authService.loadProfile()
+                        logService.pushToWidget(profile: authService.profile)
                     }
                 }
                 lastWasBackspace = false
@@ -1027,6 +1028,7 @@ struct HomeView: View {
         Task {
             await logService.addEntry(userId: userId, food: food, grams: grams, mealIndex: currentMealIndex, date: selectedDate)
             await authService.loadProfile()
+            logService.pushToWidget(profile: authService.profile)
         }
 
         pendingFood = nil
@@ -1134,6 +1136,7 @@ struct HomeView: View {
                     date: date
                 )
                 await authService.loadProfile()
+                logService.pushToWidget(profile: authService.profile)
             }
         }
     }

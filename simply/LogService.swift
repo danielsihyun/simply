@@ -38,6 +38,22 @@ final class LogService: ObservableObject {
     var totalCarbs: Float { todayEntries.reduce(0) { $0 + $1.carbs } }
     var totalFat: Float { todayEntries.reduce(0) { $0 + $1.fat } }
 
+    // MARK: - Push snapshot to widget
+    func pushToWidget(profile: Profile?) {
+        let snapshot = MacroSnapshot(
+            calories: totalCalories,
+            calGoal: Float(profile?.calGoal ?? 2200),
+            protein: totalProtein,
+            proteinGoal: Float(profile?.proteinGoal ?? 160),
+            carbs: totalCarbs,
+            carbGoal: Float(profile?.carbGoal ?? 250),
+            fat: totalFat,
+            fatGoal: Float(profile?.fatGoal ?? 70),
+            lastUpdated: Date()
+        )
+        SharedDefaults.save(snapshot)
+    }
+
     // MARK: - Preload entries (returns without updating @Published)
     func preloadEntries(userId: UUID, date: Date) async -> [FoodLogEntry] {
         do {
@@ -258,7 +274,7 @@ final class LogService: ObservableObject {
             print("Copy entry error: \(error)")
         }
     }
-    
+
     // MARK: - Change grams afterwards
     @MainActor
     func updateEntryGrams(_ entry: FoodLogEntry, newGrams: Float) async {
@@ -285,23 +301,23 @@ final class LogService: ObservableObject {
                 .execute()
 
             if let idx = todayEntries.firstIndex(where: { $0.id == id }) {
-                var updated = todayEntries[idx]
-                updated = FoodLogEntry(
-                    id: updated.id,
-                    userId: updated.userId,
-                    logDate: updated.logDate,
-                    mealIndex: updated.mealIndex,
-                    sortOrder: updated.sortOrder,
-                    foodId: updated.foodId,
-                    customFoodId: updated.customFoodId,
-                    foodName: updated.foodName,
+                var entry = todayEntries[idx]
+                entry = FoodLogEntry(
+                    id: entry.id,
+                    userId: entry.userId,
+                    logDate: entry.logDate,
+                    mealIndex: entry.mealIndex,
+                    sortOrder: entry.sortOrder,
+                    foodId: entry.foodId,
+                    customFoodId: entry.customFoodId,
+                    foodName: entry.foodName,
                     grams: newGrams,
                     calories: newCal,
                     protein: newProtein,
                     carbs: newCarbs,
                     fat: newFat
                 )
-                todayEntries[idx] = updated
+                todayEntries[idx] = entry
             }
         } catch {
             print("Update grams error: \(error)")
