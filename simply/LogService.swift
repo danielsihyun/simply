@@ -258,4 +258,53 @@ final class LogService: ObservableObject {
             print("Copy entry error: \(error)")
         }
     }
+    
+    // MARK: - Change grams afterwards
+    @MainActor
+    func updateEntryGrams(_ entry: FoodLogEntry, newGrams: Float) async {
+        guard let id = entry.id, entry.grams > 0 else { return }
+        let ratio = newGrams / entry.grams
+
+        let newCal = entry.calories * ratio
+        let newProtein = entry.protein * ratio
+        let newCarbs = entry.carbs * ratio
+        let newFat = entry.fat * ratio
+
+        let updated: [String: AnyJSON] = [
+            "grams": .double(Double(newGrams)),
+            "calories": .double(Double(newCal)),
+            "protein": .double(Double(newProtein)),
+            "carbs": .double(Double(newCarbs)),
+            "fat": .double(Double(newFat))
+        ]
+
+        do {
+            try await supabase.from("food_log")
+                .update(updated)
+                .eq("id", value: id.uuidString)
+                .execute()
+
+            if let idx = todayEntries.firstIndex(where: { $0.id == id }) {
+                var updated = todayEntries[idx]
+                updated = FoodLogEntry(
+                    id: updated.id,
+                    userId: updated.userId,
+                    logDate: updated.logDate,
+                    mealIndex: updated.mealIndex,
+                    sortOrder: updated.sortOrder,
+                    foodId: updated.foodId,
+                    customFoodId: updated.customFoodId,
+                    foodName: updated.foodName,
+                    grams: newGrams,
+                    calories: newCal,
+                    protein: newProtein,
+                    carbs: newCarbs,
+                    fat: newFat
+                )
+                todayEntries[idx] = updated
+            }
+        } catch {
+            print("Update grams error: \(error)")
+        }
+    }
 }
