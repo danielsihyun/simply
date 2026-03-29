@@ -56,6 +56,7 @@ struct HomeView: View {
     @State private var pendingBarcode: String? = nil
     @State private var lastWasCustomBackspace = false
     @State private var isCopyingMeal = false
+    @State private var editingEntryId: UUID? = nil
     @FocusState private var inputFocused: Bool
     @FocusState private var gramsFocused: Bool
 
@@ -308,6 +309,11 @@ struct HomeView: View {
             }
         }
         .onTapGesture {
+            // Dismiss any inline entry editing when tapping outside
+            if editingEntryId != nil {
+                editingEntryId = nil
+            }
+
             if mode == .grams {
                 gramsFocused = true
             } else {
@@ -436,12 +442,29 @@ struct HomeView: View {
                 .padding(.bottom, 2)
 
                 ForEach(group) { entry in
-                    FoodEntryRow(entry: entry) {
-                        Task {
-                            await logService.deleteEntry(entry)
-                            await authService.loadProfile()
+                    FoodEntryRow(
+                        entry: entry,
+                        isEditing: editingEntryId == entry.id,
+                        onTapToEdit: {
+                            editingEntryId = entry.id
+                        },
+                        onCancelEdit: {
+                            editingEntryId = nil
+                        },
+                        onRemove: {
+                            Task {
+                                await logService.deleteEntry(entry)
+                                await authService.loadProfile()
+                            }
+                        },
+                        onUpdateGrams: { newGrams in
+                            editingEntryId = nil
+                            Task {
+                                await logService.updateEntryGrams(entry, newGrams: newGrams)
+                                await authService.loadProfile()
+                            }
                         }
-                    }
+                    )
                 }
 
                 if mealIdx < groups.count - 1 {
@@ -769,6 +792,7 @@ struct HomeView: View {
         lastWasBackspace = false
         suppressUndo = true
         pendingBarcode = nil
+        editingEntryId = nil
 
         Task {
             let entries = await logService.preloadEntries(userId: userId, date: newDate)
@@ -1200,12 +1224,32 @@ struct MacroBar: View {
     }
 }
 
-// MARK: - Food Entry Row
+// MARK: - Food Entry Row (with tap-to-edit grams)
 struct FoodEntryRow: View {
     @EnvironmentObject var macroColors: MacroColors
 
     let entry: FoodLogEntry
+    let isEditing: Bool
+    let onTapToEdit: () -> Void
+    let onCancelEdit: () -> Void
     let onRemove: () -> Void
+    let onUpdateGrams: (Float) -> Void
+
+    @State private var editText = ""
+    @FocusState private var editFocused: Bool
+
+    /// Recalculate macros proportionally from the entry's stored values
+    private func previewMacros(forGrams g: Float) -> (cal: Float, protein: Float, carbs: Float, fat: Float) {
+        let currentGrams = entry.grams
+        guard currentGrams > 0 else { return (0, 0, 0, 0) }
+        let ratio = g / currentGrams
+        return (
+            entry.calories * ratio,
+            entry.protein * ratio,
+            entry.carbs * ratio,
+            entry.fat * ratio
+        )
+    }
 
     var body: some View {
         HStack(alignment: .top) {
@@ -1215,39 +1259,125 @@ struct FoodEntryRow: View {
                     .foregroundColor(.textPrimary)
 
                 HStack(spacing: 10) {
-                    Text("\(Int(entry.grams))g")
-                        .font(.labelSmall)
-                        .foregroundColor(.textMuted)
+                    if isEditing {
+                        // Editable grams field
+                        HStack(spacing: 1) {
+                            TextField("\(Int(entry.grams))", text: $editText)
+                                .font(.labelSmall)
+                                .foregroundColor(.white)
+                                .keyboardType(.numberPad)
+                                .autocorrectionDisabled()
+                                .textInputAutocapitalization(.never)
+                                .focused($editFocused)
+                                .fixedSize()
+                                .onSubmit { commitEdit() }
+                                .onKeyPress(.return) {
+                                    commitEdit()
+                                    return .handled
+                                }
+
+                            Text("g")
+                                .font(.labelSmall)
+                                .foregroundColor(.textMuted)
+                        }
+                        .padding(.horizontal, 6)
+                        .padding(.vertical, 2)
+                        .background(Color.white.opacity(0.08))
+                        .cornerRadius(4)
+                    } else {
+                        Text("\(Int(entry.grams))g")
+                            .font(.labelSmall)
+                            .foregroundColor(.textMuted)
+                    }
 
                     Text("·")
                         .font(.labelSmall)
                         .foregroundColor(.white.opacity(0.1))
 
-                    Text("\(Int(entry.calories))")
-                        .font(.monoSmall)
-                        .foregroundColor(.white.opacity(0.4))
-                    Text("\(Int(entry.protein))p")
-                        .font(.monoSmall)
-                        .foregroundColor(macroColors.protein)
-                    Text("\(Int(entry.carbs))c")
-                        .font(.monoSmall)
-                        .foregroundColor(macroColors.carbs)
-                    Text("\(Int(entry.fat))f")
-                        .font(.monoSmall)
-                        .foregroundColor(macroColors.fat)
+                    // Show live-preview macros while editing, otherwise stored values
+                    if isEditing, let editGrams = Float(editText), editGrams > 0 {
+                        let preview = previewMacros(forGrams: editGrams)
+                        Text("\(Int(preview.cal))")
+                            .font(.monoSmall)
+                            .foregroundColor(.white.opacity(0.4))
+                        Text("\(Int(preview.protein))p")
+                            .font(.monoSmall)
+                            .foregroundColor(macroColors.protein)
+                        Text("\(Int(preview.carbs))c")
+                            .font(.monoSmall)
+                            .foregroundColor(macroColors.carbs)
+                        Text("\(Int(preview.fat))f")
+                            .font(.monoSmall)
+                            .foregroundColor(macroColors.fat)
+                    } else {
+                        Text("\(Int(entry.calories))")
+                            .font(.monoSmall)
+                            .foregroundColor(.white.opacity(0.4))
+                        Text("\(Int(entry.protein))p")
+                            .font(.monoSmall)
+                            .foregroundColor(macroColors.protein)
+                        Text("\(Int(entry.carbs))c")
+                            .font(.monoSmall)
+                            .foregroundColor(macroColors.carbs)
+                        Text("\(Int(entry.fat))f")
+                            .font(.monoSmall)
+                            .foregroundColor(macroColors.fat)
+                    }
                 }
             }
 
             Spacer()
 
-            Button(action: onRemove) {
-                Text("×")
-                    .font(.system(size: 15))
-                    .foregroundColor(.white.opacity(0.12))
+            if isEditing {
+                HStack(spacing: 12) {
+                    Button(action: { onCancelEdit() }) {
+                        Text("×")
+                            .font(.system(size: 15))
+                            .foregroundColor(.white.opacity(0.25))
+                    }
+
+                    Button(action: { commitEdit() }) {
+                        Image(systemName: "checkmark")
+                            .font(.system(size: 12, weight: .semibold))
+                            .foregroundColor(.calBarBlue.opacity(0.8))
+                    }
+                }
+                .padding(.top, 2)
+            } else {
+                Button(action: onRemove) {
+                    Text("×")
+                        .font(.system(size: 15))
+                        .foregroundColor(.white.opacity(0.12))
+                }
+                .padding(.top, 2)
             }
-            .padding(.top, 2)
         }
         .padding(.vertical, 5)
+        .contentShape(Rectangle())
+        .onTapGesture {
+            if !isEditing {
+                onTapToEdit()
+            }
+        }
+        .onChange(of: isEditing) { _, editing in
+            if editing {
+                editText = "\(Int(entry.grams))"
+                DispatchQueue.main.asyncAfter(deadline: .now() + 0.1) {
+                    editFocused = true
+                }
+            } else {
+                editFocused = false
+                editText = ""
+            }
+        }
+    }
+
+    private func commitEdit() {
+        guard let newGrams = Float(editText), newGrams > 0 else {
+            onCancelEdit()
+            return
+        }
+        onUpdateGrams(newGrams)
     }
 }
 
