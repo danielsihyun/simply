@@ -443,6 +443,9 @@ struct HomeView: View {
                                         await logService.updateEntryGrams(entry, newGrams: newGrams)
                                         await authService.loadProfile()
                                     }
+                                    DispatchQueue.main.asyncAfter(deadline: .now() + 0.05) {
+                                        inputFocused = true
+                                    }
                                 }
                             )
                         }
