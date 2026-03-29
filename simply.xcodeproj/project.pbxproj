@@ -7,10 +7,40 @@
 	objects = {
 
 /* Begin PBXBuildFile section */
+		73DCA17B2F799FF2009F9F97 /* WidgetKit.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 73DCA17A2F799FF2009F9F97 /* WidgetKit.framework */; };
+		73DCA17D2F799FF2009F9F97 /* SwiftUI.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 73DCA17C2F799FF2009F9F97 /* SwiftUI.framework */; };
+		73DCA18C2F799FF4009F9F97 /* MacroWidgetExtension.appex in Embed Foundation Extensions */ = {isa = PBXBuildFile; fileRef = 73DCA1782F799FF2009F9F97 /* MacroWidgetExtension.appex */; settings = {ATTRIBUTES = (RemoveHeadersOnCopy, ); }; };
 		73EBE9262F4A6A5700FECDAE /* Supabase in Frameworks */ = {isa = PBXBuildFile; productRef = 73EBE9252F4A6A5700FECDAE /* Supabase */; };
 /* End PBXBuildFile section */
 
+/* Begin PBXContainerItemProxy section */
+		73DCA18A2F799FF4009F9F97 /* PBXContainerItemProxy */ = {
+			isa = PBXContainerItemProxy;
+			containerPortal = 73EBE90E2F4A69D400FECDAE /* Project object */;
+			proxyType = 1;
+			remoteGlobalIDString = 73DCA1772F799FF2009F9F97;
+			remoteInfo = MacroWidgetExtension;
+		};
+/* End PBXContainerItemProxy section */
+
+/* Begin PBXCopyFilesBuildPhase section */
+		73DCA1912F799FF4009F9F97 /* Embed Foundation Extensions */ = {
+			isa = PBXCopyFilesBuildPhase;
+			buildActionMask = 2147483647;
+			dstPath = "";
+			dstSubfolderSpec = 13;
+			files = (
+				73DCA18C2F799FF4009F9F97 /* MacroWidgetExtension.appex in Embed Foundation Extensions */,
+			);
+			name = "Embed Foundation Extensions";
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+/* End PBXCopyFilesBuildPhase section */
+
 /* Begin PBXFileReference section */
+		73DCA1782F799FF2009F9F97 /* MacroWidgetExtension.appex */ = {isa = PBXFileReference; explicitFileType = "wrapper.app-extension"; includeInIndex = 0; path = MacroWidgetExtension.appex; sourceTree = BUILT_PRODUCTS_DIR; };
+		73DCA17A2F799FF2009F9F97 /* WidgetKit.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = WidgetKit.framework; path = System/Library/Frameworks/WidgetKit.framework; sourceTree = SDKROOT; };
+		73DCA17C2F799FF2009F9F97 /* SwiftUI.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = SwiftUI.framework; path = System/Library/Frameworks/SwiftUI.framework; sourceTree = SDKROOT; };
 		73EBE9162F4A69D500FECDAE /* simply.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = simply.app; sourceTree = BUILT_PRODUCTS_DIR; };
 /* End PBXFileReference section */
 
@@ -22,13 +52,36 @@
 			);
 			target = 73EBE9152F4A69D500FECDAE /* simply */;
 		};
+		73DCA1902F799FF4009F9F97 /* Exceptions for "MacroWidget" folder in "MacroWidgetExtension" target */ = {
+			isa = PBXFileSystemSynchronizedBuildFileExceptionSet;
+			membershipExceptions = (
+				Info.plist,
+			);
+			target = 73DCA1772F799FF2009F9F97 /* MacroWidgetExtension */;
+		};
+		73DCA19B2F79A102009F9F97 /* Exceptions for "simply" folder in "MacroWidgetExtension" target */ = {
+			isa = PBXFileSystemSynchronizedBuildFileExceptionSet;
+			membershipExceptions = (
+				SharedDefaults.swift,
+			);
+			target = 73DCA1772F799FF2009F9F97 /* MacroWidgetExtension */;
+		};
 /* End PBXFileSystemSynchronizedBuildFileExceptionSet section */
 
 /* Begin PBXFileSystemSynchronizedRootGroup section */
+		73DCA17E2F799FF2009F9F97 /* MacroWidget */ = {
+			isa = PBXFileSystemSynchronizedRootGroup;
+			exceptions = (
+				73DCA1902F799FF4009F9F97 /* Exceptions for "MacroWidget" folder in "MacroWidgetExtension" target */,
+			);
+			path = MacroWidget;
+			sourceTree = "<group>";
+		};
 		73EBE9182F4A69D500FECDAE /* simply */ = {
 			isa = PBXFileSystemSynchronizedRootGroup;
 			exceptions = (
 				73DCA16F2F721063009F9F97 /* Exceptions for "simply" folder in "simply" target */,
+				73DCA19B2F79A102009F9F97 /* Exceptions for "simply" folder in "MacroWidgetExtension" target */,
 			);
 			path = simply;
 			sourceTree = "<group>";
@@ -36,6 +89,15 @@
 /* End PBXFileSystemSynchronizedRootGroup section */
 
 /* Begin PBXFrameworksBuildPhase section */
+		73DCA1752F799FF2009F9F97 /* Frameworks */ = {
+			isa = PBXFrameworksBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				73DCA17D2F799FF2009F9F97 /* SwiftUI.framework in Frameworks */,
+				73DCA17B2F799FF2009F9F97 /* WidgetKit.framework in Frameworks */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
 		73EBE9132F4A69D500FECDAE /* Frameworks */ = {
 			isa = PBXFrameworksBuildPhase;
 			buildActionMask = 2147483647;
@@ -47,10 +109,21 @@
 /* End PBXFrameworksBuildPhase section */
 
 /* Begin PBXGroup section */
+		73DCA1792F799FF2009F9F97 /* Frameworks */ = {
+			isa = PBXGroup;
+			children = (
+				73DCA17A2F799FF2009F9F97 /* WidgetKit.framework */,
+				73DCA17C2F799FF2009F9F97 /* SwiftUI.framework */,
+			);
+			name = Frameworks;
+			sourceTree = "<group>";
+		};
 		73EBE90D2F4A69D400FECDAE = {
 			isa = PBXGroup;
 			children = (
 				73EBE9182F4A69D500FECDAE /* simply */,
+				73DCA17E2F799FF2009F9F97 /* MacroWidget */,
+				73DCA1792F799FF2009F9F97 /* Frameworks */,
 				73EBE9172F4A69D500FECDAE /* Products */,
 			);
 			sourceTree = "<group>";
@@ -59,6 +132,7 @@
 			isa = PBXGroup;
 			children = (
 				73EBE9162F4A69D500FECDAE /* simply.app */,
+				73DCA1782F799FF2009F9F97 /* MacroWidgetExtension.appex */,
 			);
 			name = Products;
 			sourceTree = "<group>";
@@ -66,6 +140,28 @@
 /* End PBXGroup section */
 
 /* Begin PBXNativeTarget section */
+		73DCA1772F799FF2009F9F97 /* MacroWidgetExtension */ = {
+			isa = PBXNativeTarget;
+			buildConfigurationList = 73DCA18D2F799FF4009F9F97 /* Build configuration list for PBXNativeTarget "MacroWidgetExtension" */;
+			buildPhases = (
+				73DCA1742F799FF2009F9F97 /* Sources */,
+				73DCA1752F799FF2009F9F97 /* Frameworks */,
+				73DCA1762F799FF2009F9F97 /* Resources */,
+			);
+			buildRules = (
+			);
+			dependencies = (
+			);
+			fileSystemSynchronizedGroups = (
+				73DCA17E2F799FF2009F9F97 /* MacroWidget */,
+			);
+			name = MacroWidgetExtension;
+			packageProductDependencies = (
+			);
+			productName = MacroWidgetExtension;
+			productReference = 73DCA1782F799FF2009F9F97 /* MacroWidgetExtension.appex */;
+			productType = "com.apple.product-type.app-extension";
+		};
 		73EBE9152F4A69D500FECDAE /* simply */ = {
 			isa = PBXNativeTarget;
 			buildConfigurationList = 73EBE9212F4A69D500FECDAE /* Build configuration list for PBXNativeTarget "simply" */;
@@ -73,10 +169,12 @@
 				73EBE9122F4A69D500FECDAE /* Sources */,
 				73EBE9132F4A69D500FECDAE /* Frameworks */,
 				73EBE9142F4A69D500FECDAE /* Resources */,
+				73DCA1912F799FF4009F9F97 /* Embed Foundation Extensions */,
 			);
 			buildRules = (
 			);
 			dependencies = (
+				73DCA18B2F799FF4009F9F97 /* PBXTargetDependency */,
 			);
 			fileSystemSynchronizedGroups = (
 				73EBE9182F4A69D500FECDAE /* simply */,
@@ -99,6 +197,10 @@
 				LastSwiftUpdateCheck = 2620;
 				LastUpgradeCheck = 2620;
 				TargetAttributes = {
+					73DCA1772F799FF2009F9F97 = {
+						CreatedOnToolsVersion = 26.2;
+						LastSwiftMigration = 2620;
+					};
 					73EBE9152F4A69D500FECDAE = {
 						CreatedOnToolsVersion = 26.2;
 					};
@@ -122,11 +224,19 @@
 			projectRoot = "";
 			targets = (
 				73EBE9152F4A69D500FECDAE /* simply */,
+				73DCA1772F799FF2009F9F97 /* MacroWidgetExtension */,
 			);
 		};
 /* End PBXProject section */
 
 /* Begin PBXResourcesBuildPhase section */
+		73DCA1762F799FF2009F9F97 /* Resources */ = {
+			isa = PBXResourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
 		73EBE9142F4A69D500FECDAE /* Resources */ = {
 			isa = PBXResourcesBuildPhase;
 			buildActionMask = 2147483647;
@@ -137,6 +247,13 @@
 /* End PBXResourcesBuildPhase section */
 
 /* Begin PBXSourcesBuildPhase section */
+		73DCA1742F799FF2009F9F97 /* Sources */ = {
+			isa = PBXSourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
 		73EBE9122F4A69D500FECDAE /* Sources */ = {
 			isa = PBXSourcesBuildPhase;
 			buildActionMask = 2147483647;
@@ -146,7 +263,78 @@
 		};
 /* End PBXSourcesBuildPhase section */
 
+/* Begin PBXTargetDependency section */
+		73DCA18B2F799FF4009F9F97 /* PBXTargetDependency */ = {
+			isa = PBXTargetDependency;
+			target = 73DCA1772F799FF2009F9F97 /* MacroWidgetExtension */;
+			targetProxy = 73DCA18A2F799FF4009F9F97 /* PBXContainerItemProxy */;
+		};
+/* End PBXTargetDependency section */
+
 /* Begin XCBuildConfiguration section */
+		73DCA18E2F799FF4009F9F97 /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
+				ASSETCATALOG_COMPILER_WIDGET_BACKGROUND_COLOR_NAME = WidgetBackground;
+				CLANG_ENABLE_MODULES = YES;
+				CODE_SIGN_STYLE = Automatic;
+				CURRENT_PROJECT_VERSION = 1;
+				DEVELOPMENT_TEAM = PWF3QUQ5JT;
+				GENERATE_INFOPLIST_FILE = YES;
+				INFOPLIST_FILE = MacroWidget/Info.plist;
+				INFOPLIST_KEY_CFBundleDisplayName = MacroWidget;
+				INFOPLIST_KEY_NSHumanReadableCopyright = "";
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/Frameworks",
+					"@executable_path/../../Frameworks",
+				);
+				MARKETING_VERSION = 1.0;
+				PRODUCT_BUNDLE_IDENTIFIER = com.danielsihyun.simply.MacroWidget;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SKIP_INSTALL = YES;
+				STRING_CATALOG_GENERATE_SYMBOLS = YES;
+				SWIFT_APPROACHABLE_CONCURRENCY = YES;
+				SWIFT_EMIT_LOC_STRINGS = YES;
+				SWIFT_OPTIMIZATION_LEVEL = "-Onone";
+				SWIFT_UPCOMING_FEATURE_MEMBER_IMPORT_VISIBILITY = YES;
+				SWIFT_VERSION = 5.0;
+				TARGETED_DEVICE_FAMILY = "1,2";
+			};
+			name = Debug;
+		};
+		73DCA18F2F799FF4009F9F97 /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
+				ASSETCATALOG_COMPILER_WIDGET_BACKGROUND_COLOR_NAME = WidgetBackground;
+				CLANG_ENABLE_MODULES = YES;
+				CODE_SIGN_STYLE = Automatic;
+				CURRENT_PROJECT_VERSION = 1;
+				DEVELOPMENT_TEAM = PWF3QUQ5JT;
+				GENERATE_INFOPLIST_FILE = YES;
+				INFOPLIST_FILE = MacroWidget/Info.plist;
+				INFOPLIST_KEY_CFBundleDisplayName = MacroWidget;
+				INFOPLIST_KEY_NSHumanReadableCopyright = "";
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/Frameworks",
+					"@executable_path/../../Frameworks",
+				);
+				MARKETING_VERSION = 1.0;
+				PRODUCT_BUNDLE_IDENTIFIER = com.danielsihyun.simply.MacroWidget;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SKIP_INSTALL = YES;
+				STRING_CATALOG_GENERATE_SYMBOLS = YES;
+				SWIFT_APPROACHABLE_CONCURRENCY = YES;
+				SWIFT_EMIT_LOC_STRINGS = YES;
+				SWIFT_UPCOMING_FEATURE_MEMBER_IMPORT_VISIBILITY = YES;
+				SWIFT_VERSION = 5.0;
+				TARGETED_DEVICE_FAMILY = "1,2";
+			};
+			name = Release;
+		};
 		73EBE91F2F4A69D500FECDAE /* Debug */ = {
 			isa = XCBuildConfiguration;
 			buildSettings = {
@@ -341,6 +529,15 @@
 /* End XCBuildConfiguration section */
 
 /* Begin XCConfigurationList section */
+		73DCA18D2F799FF4009F9F97 /* Build configuration list for PBXNativeTarget "MacroWidgetExtension" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				73DCA18E2F799FF4009F9F97 /* Debug */,
+				73DCA18F2F799FF4009F9F97 /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Release;
+		};
 		73EBE9112F4A69D400FECDAE /* Build configuration list for PBXProject "simply" */ = {
 			isa = XCConfigurationList;
 			buildConfigurations = (
