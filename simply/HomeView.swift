@@ -196,6 +196,7 @@ struct HomeView: View {
             if let userId = authService.userId {
                 await logService.loadEntries(userId: userId, date: selectedDate)
                 currentMealIndex = logService.todayEntries.map(\.mealIndex).max() ?? 0
+                logService.pushToWidget(profile: authService.profile)
             }
             inputText = Self.sentinel
             try? await Task.sleep(nanoseconds: 200_000_000)
@@ -834,6 +835,7 @@ struct HomeView: View {
             logService.todayEntries = entries
             currentMealIndex = entries.map(\.mealIndex).max() ?? 0
             selectedDate = newDate
+            logService.pushToWidget(profile: authService.profile)
         }
     }
 
