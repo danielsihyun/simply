@@ -1265,7 +1265,7 @@ struct FoodEntryRow: View {
                             TextField("\(Int(entry.grams))", text: $editText)
                                 .font(.labelSmall)
                                 .foregroundColor(.white)
-                                .keyboardType(.numberPad)
+                                .keyboardType(.default)
                                 .autocorrectionDisabled()
                                 .textInputAutocapitalization(.never)
                                 .focused($editFocused)
