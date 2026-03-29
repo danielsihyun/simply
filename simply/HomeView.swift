@@ -279,6 +279,7 @@ struct HomeView: View {
                             .font(.labelSmall)
                             .foregroundColor(.textMuted)
                     }
+                    .frame(height: 16, alignment: .leading)
 
                     Text("·")
                         .font(.labelSmall)
@@ -1316,6 +1317,7 @@ struct FoodEntryRow: View {
                             .font(.labelSmall)
                             .foregroundColor(.textMuted)
                     }
+                    .frame(height: 16, alignment: .leading)
 
                     Text("·")
                         .font(.labelSmall)
