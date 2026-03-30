@@ -120,7 +120,8 @@ final class LogService: ObservableObject {
             calories: macros.calories,
             protein: macros.protein,
             carbs: macros.carbs,
-            fat: macros.fat
+            fat: macros.fat,
+            isCount: food.isCount
         )
 
         // Optimistic insert — shows immediately
@@ -137,7 +138,8 @@ final class LogService: ObservableObject {
             calories: macros.calories,
             protein: macros.protein,
             carbs: macros.carbs,
-            fat: macros.fat
+            fat: macros.fat,
+            isCount: food.isCount
         )
         todayEntries.append(optimistic)
 
@@ -182,7 +184,8 @@ final class LogService: ObservableObject {
             calories: calories,
             protein: protein,
             carbs: carbs,
-            fat: fat
+            fat: fat,
+            isCount: false
         )
 
         do {
@@ -262,7 +265,8 @@ final class LogService: ObservableObject {
             "carbs": .double(Double(entry.carbs)),
             "fat": .double(Double(entry.fat)),
             "meal_index": .integer(mealIndex),
-            "log_date": .string(dateStr)
+            "log_date": .string(dateStr),
+            "is_count": .bool(entry.isCount)
         ]
 
         do {
@@ -301,23 +305,24 @@ final class LogService: ObservableObject {
                 .execute()
 
             if let idx = todayEntries.firstIndex(where: { $0.id == id }) {
-                var entry = todayEntries[idx]
-                entry = FoodLogEntry(
-                    id: entry.id,
-                    userId: entry.userId,
-                    logDate: entry.logDate,
-                    mealIndex: entry.mealIndex,
-                    sortOrder: entry.sortOrder,
-                    foodId: entry.foodId,
-                    customFoodId: entry.customFoodId,
-                    foodName: entry.foodName,
+                let old = todayEntries[idx]
+                let replaced = FoodLogEntry(
+                    id: old.id,
+                    userId: old.userId,
+                    logDate: old.logDate,
+                    mealIndex: old.mealIndex,
+                    sortOrder: old.sortOrder,
+                    foodId: old.foodId,
+                    customFoodId: old.customFoodId,
+                    foodName: old.foodName,
                     grams: newGrams,
                     calories: newCal,
                     protein: newProtein,
                     carbs: newCarbs,
-                    fat: newFat
+                    fat: newFat,
+                    isCount: old.isCount
                 )
-                todayEntries[idx] = entry
+                todayEntries[idx] = replaced
             }
         } catch {
             print("Update grams error: \(error)")

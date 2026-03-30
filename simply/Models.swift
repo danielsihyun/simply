@@ -126,6 +126,24 @@ struct FoodLogEntry: Codable, Identifiable {
         case isCount = "is_count"
     }
 
+    // Memberwise init (needed because custom Decodable init replaces the auto-generated one)
+    init(id: UUID? = nil, userId: UUID, logDate: String, mealIndex: Int, sortOrder: Int, foodId: UUID? = nil, customFoodId: UUID? = nil, foodName: String, grams: Float, calories: Float, protein: Float, carbs: Float, fat: Float, isCount: Bool = false) {
+        self.id = id
+        self.userId = userId
+        self.logDate = logDate
+        self.mealIndex = mealIndex
+        self.sortOrder = sortOrder
+        self.foodId = foodId
+        self.customFoodId = customFoodId
+        self.foodName = foodName
+        self.grams = grams
+        self.calories = calories
+        self.protein = protein
+        self.carbs = carbs
+        self.fat = fat
+        self.isCount = isCount
+    }
+
     init(from decoder: Decoder) throws {
         let container = try decoder.container(keyedBy: CodingKeys.self)
         id = try container.decodeIfPresent(UUID.self, forKey: .id)
