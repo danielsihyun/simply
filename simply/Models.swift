@@ -12,6 +12,7 @@ struct Food: Codable, Identifiable, Hashable {
     let proteinPerServing: Float
     let carbsPerServing: Float
     let fatPerServing: Float
+    let isCount: Bool
 
     enum CodingKeys: String, CodingKey {
         case id
@@ -23,6 +24,22 @@ struct Food: Codable, Identifiable, Hashable {
         case proteinPerServing = "protein_per_serving"
         case carbsPerServing = "carbs_per_serving"
         case fatPerServing = "fat_per_serving"
+        case isCount = "is_count"
+    }
+
+    init(from decoder: Decoder) throws {
+        let container = try decoder.container(keyedBy: CodingKeys.self)
+        id = try container.decode(UUID.self, forKey: .id)
+        externalId = try container.decode(String.self, forKey: .externalId)
+        name = try container.decode(String.self, forKey: .name)
+        brand = try container.decodeIfPresent(String.self, forKey: .brand)
+        servingLabel = try container.decode(String.self, forKey: .servingLabel)
+        servingGrams = try container.decode(Float.self, forKey: .servingGrams)
+        calPerServing = try container.decode(Float.self, forKey: .calPerServing)
+        proteinPerServing = try container.decode(Float.self, forKey: .proteinPerServing)
+        carbsPerServing = try container.decode(Float.self, forKey: .carbsPerServing)
+        fatPerServing = try container.decode(Float.self, forKey: .fatPerServing)
+        isCount = try container.decodeIfPresent(Bool.self, forKey: .isCount) ?? false
     }
 
     /// Calculate macros for a given weight in grams
@@ -94,6 +111,7 @@ struct FoodLogEntry: Codable, Identifiable {
     let protein: Float
     let carbs: Float
     let fat: Float
+    let isCount: Bool
 
     enum CodingKeys: String, CodingKey {
         case id
@@ -105,6 +123,25 @@ struct FoodLogEntry: Codable, Identifiable {
         case customFoodId = "custom_food_id"
         case foodName = "food_name"
         case grams, calories, protein, carbs, fat
+        case isCount = "is_count"
+    }
+
+    init(from decoder: Decoder) throws {
+        let container = try decoder.container(keyedBy: CodingKeys.self)
+        id = try container.decodeIfPresent(UUID.self, forKey: .id)
+        userId = try container.decode(UUID.self, forKey: .userId)
+        logDate = try container.decode(String.self, forKey: .logDate)
+        mealIndex = try container.decode(Int.self, forKey: .mealIndex)
+        sortOrder = try container.decode(Int.self, forKey: .sortOrder)
+        foodId = try container.decodeIfPresent(UUID.self, forKey: .foodId)
+        customFoodId = try container.decodeIfPresent(UUID.self, forKey: .customFoodId)
+        foodName = try container.decode(String.self, forKey: .foodName)
+        grams = try container.decode(Float.self, forKey: .grams)
+        calories = try container.decode(Float.self, forKey: .calories)
+        protein = try container.decode(Float.self, forKey: .protein)
+        carbs = try container.decode(Float.self, forKey: .carbs)
+        fat = try container.decode(Float.self, forKey: .fat)
+        isCount = try container.decodeIfPresent(Bool.self, forKey: .isCount) ?? false
     }
 }
 
@@ -122,6 +159,7 @@ struct FoodLogInsert: Codable {
     let protein: Float
     let carbs: Float
     let fat: Float
+    let isCount: Bool
 
     enum CodingKeys: String, CodingKey {
         case userId = "user_id"
@@ -132,6 +170,7 @@ struct FoodLogInsert: Codable {
         case customFoodId = "custom_food_id"
         case foodName = "food_name"
         case grams, calories, protein, carbs, fat
+        case isCount = "is_count"
     }
 }
 
@@ -180,6 +219,7 @@ struct CustomFoodInsert: Encodable {
     let proteinPerServing: Float
     let carbsPerServing: Float
     let fatPerServing: Float
+    let isCount: Bool
 
     enum CodingKeys: String, CodingKey {
         case externalId = "external_id"
@@ -190,6 +230,7 @@ struct CustomFoodInsert: Encodable {
         case proteinPerServing = "protein_per_serving"
         case carbsPerServing = "carbs_per_serving"
         case fatPerServing = "fat_per_serving"
+        case isCount = "is_count"
     }
 }
 
