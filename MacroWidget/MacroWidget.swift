@@ -40,6 +40,10 @@ struct MacroWidgetView: View {
     private var fatPct: CGFloat { s.fatGoal > 0 ? min(CGFloat(s.fat / s.fatGoal), 1) : 0 }
     private var remaining: Int { Int(s.calGoal - s.calories) }
 
+    private var proteinColor: Color { Color(red: s.proteinColorR, green: s.proteinColorG, blue: s.proteinColorB) }
+    private var carbsColor: Color { Color(red: s.carbsColorR, green: s.carbsColorG, blue: s.carbsColorB) }
+    private var fatColor: Color { Color(red: s.fatColorR, green: s.fatColorG, blue: s.fatColorB) }
+
     var body: some View {
         ZStack {
             // Background
@@ -71,7 +75,7 @@ struct MacroWidgetView: View {
 
                         Text(remaining >= 0 ? "left" : "over")
                             .font(.system(size: 9, weight: .medium))
-                            .foregroundColor(remaining >= 0 ? .white.opacity(0.4) : Color(red: 1.0, green: 0.47, blue: 0.47).opacity(0.8))
+                            .foregroundColor(.white.opacity(0.4))
                     }
                 }
                 .frame(width: 72, height: 72)
@@ -81,9 +85,9 @@ struct MacroWidgetView: View {
 
                 // Macro bars
                 HStack(spacing: 8) {
-                    MacroMiniBar(label: "P", value: s.protein, goal: s.proteinGoal, color: Color(red: 0.47, green: 0.75, blue: 1.0))
-                    MacroMiniBar(label: "C", value: s.carbs, goal: s.carbGoal, color: Color(red: 1.0, green: 0.78, blue: 0.35))
-                    MacroMiniBar(label: "F", value: s.fat, goal: s.fatGoal, color: Color(red: 1.0, green: 0.47, blue: 0.47))
+                    MacroMiniBar(label: "P", value: s.protein, goal: s.proteinGoal, color: proteinColor)
+                    MacroMiniBar(label: "C", value: s.carbs, goal: s.carbGoal, color: carbsColor)
+                    MacroMiniBar(label: "F", value: s.fat, goal: s.fatGoal, color: fatColor)
                 }
                 .padding(.horizontal, 14)
                 .padding(.bottom, 12)
@@ -93,13 +97,23 @@ struct MacroWidgetView: View {
     }
 
     private var calorieGradient: LinearGradient {
-        if calPct >= 1 {
+        let over = s.calories - s.calGoal
+        if over >= 100 {
+            // Red when 100+ over goal
+            return LinearGradient(
+                colors: [Color(red: 1.0, green: 0.35, blue: 0.35), Color(red: 0.85, green: 0.2, blue: 0.2)],
+                startPoint: .leading,
+                endPoint: .trailing
+            )
+        } else if calPct >= 1 {
+            // Green when at or slightly over goal
             return LinearGradient(
                 colors: [Color(red: 0.3, green: 0.85, blue: 0.45), Color(red: 0.2, green: 0.7, blue: 0.35)],
                 startPoint: .leading,
                 endPoint: .trailing
             )
         }
+        // Blue/purple when under goal
         return LinearGradient(
             colors: [Color(red: 0.35, green: 0.55, blue: 1.0), Color(red: 0.6, green: 0.4, blue: 1.0)],
             startPoint: .leading,
@@ -167,13 +181,19 @@ struct MacroWidget: Widget {
         protein: 120, proteinGoal: 160,
         carbs: 180, carbGoal: 250,
         fat: 45, fatGoal: 70,
-        lastUpdated: Date()
+        lastUpdated: Date(),
+        proteinColorR: 0.47, proteinColorG: 0.75, proteinColorB: 1.0,
+        carbsColorR: 1.0, carbsColorG: 0.78, carbsColorB: 0.35,
+        fatColorR: 1.0, fatColorG: 0.47, fatColorB: 0.47
     ))
     MacroEntry(date: Date(), snapshot: MacroSnapshot(
-        calories: 2200, calGoal: 2200,
+        calories: 2400, calGoal: 2200,
         protein: 160, proteinGoal: 160,
         carbs: 250, carbGoal: 250,
         fat: 70, fatGoal: 70,
-        lastUpdated: Date()
+        lastUpdated: Date(),
+        proteinColorR: 0.47, proteinColorG: 0.75, proteinColorB: 1.0,
+        carbsColorR: 1.0, carbsColorG: 0.78, carbsColorB: 0.35,
+        fatColorR: 1.0, fatColorG: 0.47, fatColorB: 0.47
     ))
 }

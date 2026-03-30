@@ -13,18 +13,31 @@ struct MacroSnapshot: Codable {
     let fatGoal: Float
     let lastUpdated: Date
 
+    // Macro colors (stored as RGB)
+    let proteinColorR: Double
+    let proteinColorG: Double
+    let proteinColorB: Double
+    let carbsColorR: Double
+    let carbsColorG: Double
+    let carbsColorB: Double
+    let fatColorR: Double
+    let fatColorG: Double
+    let fatColorB: Double
+
     static let empty = MacroSnapshot(
         calories: 0, calGoal: 2200,
         protein: 0, proteinGoal: 160,
         carbs: 0, carbGoal: 250,
         fat: 0, fatGoal: 70,
-        lastUpdated: Date()
+        lastUpdated: Date(),
+        proteinColorR: 0.47, proteinColorG: 0.75, proteinColorB: 1.0,
+        carbsColorR: 1.0, carbsColorG: 0.78, carbsColorB: 0.35,
+        fatColorR: 1.0, fatColorG: 0.47, fatColorB: 0.47
     )
 }
 
 // MARK: - Shared UserDefaults accessor
 enum SharedDefaults {
-    // Replace with your actual App Group identifier
     static let suiteName = "group.com.simply.macros"
     static let key = "macroSnapshot"
 
@@ -35,10 +48,11 @@ enum SharedDefaults {
     /// Called from the main app after every log change
     static func save(_ snapshot: MacroSnapshot) {
         guard let defaults = shared,
-              let data = try? JSONEncoder().encode(snapshot) else { return }
+              let data = try? JSONEncoder().encode(snapshot) else {
+            print("⚠️ Widget: Failed to get shared defaults — check App Group ID")
+            return
+        }
         defaults.set(data, forKey: key)
-
-        // Tell WidgetKit to refresh
         WidgetCenter.shared.reloadTimelines(ofKind: "MacroWidget")
     }
 
