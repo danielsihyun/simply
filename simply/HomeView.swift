@@ -197,7 +197,7 @@ struct HomeView: View {
                 await authService.loadProfile()
                 await logService.loadEntries(userId: userId, date: selectedDate)
                 currentMealIndex = logService.todayEntries.map(\.mealIndex).max() ?? 0
-                logService.pushToWidget(profile: authService.profile)
+                logService.pushToWidget(profile: authService.profile, macroColors: macroColors)
             }
             inputText = Self.sentinel
             try? await Task.sleep(nanoseconds: 200_000_000)
@@ -438,7 +438,7 @@ struct HomeView: View {
                                     Task {
                                         await logService.deleteEntry(entry)
                                         await authService.loadProfile()
-                                        logService.pushToWidget(profile: authService.profile)
+                                        logService.pushToWidget(profile: authService.profile, macroColors: macroColors)
                                     }
                                 },
                                 onUpdateGrams: { newGrams in
@@ -446,7 +446,7 @@ struct HomeView: View {
                                     Task {
                                         await logService.updateEntryGrams(entry, newGrams: newGrams)
                                         await authService.loadProfile()
-                                        logService.pushToWidget(profile: authService.profile)
+                                        logService.pushToWidget(profile: authService.profile, macroColors: macroColors)
                                     }
                                 }
                             )
@@ -837,7 +837,7 @@ struct HomeView: View {
             logService.todayEntries = entries
             currentMealIndex = entries.map(\.mealIndex).max() ?? 0
             selectedDate = newDate
-            logService.pushToWidget(profile: authService.profile)
+            logService.pushToWidget(profile: authService.profile, macroColors: macroColors)
         }
     }
 
@@ -876,7 +876,7 @@ struct HomeView: View {
 
             await logService.loadEntries(userId: userId, date: targetDate)
             await authService.loadProfile()
-            logService.pushToWidget(profile: authService.profile)
+            logService.pushToWidget(profile: authService.profile, macroColors: macroColors)
 
             await MainActor.run { isCopyingMeal = false }
         }
@@ -991,7 +991,7 @@ struct HomeView: View {
                     Task {
                         await logService.deleteEntry(lastEntry)
                         await authService.loadProfile()
-                        logService.pushToWidget(profile: authService.profile)
+                        logService.pushToWidget(profile: authService.profile, macroColors: macroColors)
                     }
                 }
                 lastWasBackspace = false
@@ -1032,7 +1032,7 @@ struct HomeView: View {
         Task {
             await logService.addEntry(userId: userId, food: food, grams: grams, mealIndex: currentMealIndex, date: selectedDate)
             await authService.loadProfile()
-            logService.pushToWidget(profile: authService.profile)
+            logService.pushToWidget(profile: authService.profile, macroColors: macroColors)
         }
 
         pendingFood = nil
@@ -1142,7 +1142,7 @@ struct HomeView: View {
                     date: date
                 )
                 await authService.loadProfile()
-                logService.pushToWidget(profile: authService.profile)
+                logService.pushToWidget(profile: authService.profile, macroColors: macroColors)
             }
         }
     }
