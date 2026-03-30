@@ -1,6 +1,7 @@
 import Foundation
 import Combine
 import Supabase
+import SwiftUI
 
 // MARK: - Order Update DTO
 struct OrderUpdate: Encodable {
@@ -39,7 +40,11 @@ final class LogService: ObservableObject {
     var totalFat: Float { todayEntries.reduce(0) { $0 + $1.fat } }
 
     // MARK: - Push snapshot to widget
-    func pushToWidget(profile: Profile?) {
+    func pushToWidget(profile: Profile?, macroColors: MacroColors) {
+        let pComps = UIColor(macroColors.protein).cgColor.components ?? [0.47, 0.75, 1.0, 1.0]
+        let cComps = UIColor(macroColors.carbs).cgColor.components ?? [1.0, 0.78, 0.35, 1.0]
+        let fComps = UIColor(macroColors.fat).cgColor.components ?? [1.0, 0.47, 0.47, 1.0]
+
         let snapshot = MacroSnapshot(
             calories: totalCalories,
             calGoal: Float(profile?.calGoal ?? 2200),
@@ -49,7 +54,10 @@ final class LogService: ObservableObject {
             carbGoal: Float(profile?.carbGoal ?? 250),
             fat: totalFat,
             fatGoal: Float(profile?.fatGoal ?? 70),
-            lastUpdated: Date()
+            lastUpdated: Date(),
+            proteinColorR: Double(pComps[0]), proteinColorG: Double(pComps[1]), proteinColorB: Double(pComps[2]),
+            carbsColorR: Double(cComps[0]), carbsColorG: Double(cComps[1]), carbsColorB: Double(cComps[2]),
+            fatColorR: Double(fComps[0]), fatColorG: Double(fComps[1]), fatColorB: Double(fComps[2])
         )
         SharedDefaults.save(snapshot)
     }
