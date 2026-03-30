@@ -45,53 +45,48 @@ struct MacroWidgetView: View {
     private var fatColor: Color { Color(red: s.fatColorR, green: s.fatColorG, blue: s.fatColorB) }
 
     var body: some View {
-        ZStack {
-            // Background
-            Color(red: 0.07, green: 0.07, blue: 0.09)
+        VStack(spacing: 0) {
+            // Calorie ring + center text
+            ZStack {
+                // Track
+                Circle()
+                    .stroke(Color.white.opacity(0.08), lineWidth: 5)
 
-            VStack(spacing: 0) {
-                // Calorie ring + center text
-                ZStack {
-                    // Track
-                    Circle()
-                        .stroke(Color.white.opacity(0.08), lineWidth: 5)
+                // Calorie arc
+                Circle()
+                    .trim(from: 0, to: calPct)
+                    .stroke(
+                        calorieGradient,
+                        style: StrokeStyle(lineWidth: 5, lineCap: .round)
+                    )
+                    .rotationEffect(.degrees(-90))
 
-                    // Calorie arc
-                    Circle()
-                        .trim(from: 0, to: calPct)
-                        .stroke(
-                            calorieGradient,
-                            style: StrokeStyle(lineWidth: 5, lineCap: .round)
-                        )
-                        .rotationEffect(.degrees(-90))
+                // Center text
+                VStack(spacing: 1) {
+                    Text("\(abs(remaining))")
+                        .font(.system(size: 22, weight: .bold, design: .rounded))
+                        .foregroundColor(.white)
+                        .minimumScaleFactor(0.6)
+                        .lineLimit(1)
 
-                    // Center text
-                    VStack(spacing: 1) {
-                        Text("\(abs(remaining))")
-                            .font(.system(size: 22, weight: .bold, design: .rounded))
-                            .foregroundColor(.white)
-                            .minimumScaleFactor(0.6)
-                            .lineLimit(1)
-
-                        Text(remaining >= 0 ? "left" : "over")
-                            .font(.system(size: 9, weight: .medium))
-                            .foregroundColor(.white.opacity(0.4))
-                    }
+                    Text(remaining >= 0 ? "left" : "over")
+                        .font(.system(size: 9, weight: .medium))
+                        .foregroundColor(.white.opacity(0.4))
                 }
-                .frame(width: 72, height: 72)
-                .padding(.top, 10)
-
-                Spacer().frame(height: 8)
-
-                // Macro bars
-                HStack(spacing: 8) {
-                    MacroMiniBar(label: "P", value: s.protein, goal: s.proteinGoal, color: proteinColor)
-                    MacroMiniBar(label: "C", value: s.carbs, goal: s.carbGoal, color: carbsColor)
-                    MacroMiniBar(label: "F", value: s.fat, goal: s.fatGoal, color: fatColor)
-                }
-                .padding(.horizontal, 14)
-                .padding(.bottom, 12)
             }
+            .frame(width: 72, height: 72)
+            .padding(.top, 10)
+
+            Spacer().frame(height: 8)
+
+            // Macro bars
+            HStack(spacing: 8) {
+                MacroMiniBar(label: "P", value: s.protein, goal: s.proteinGoal, color: proteinColor)
+                MacroMiniBar(label: "C", value: s.carbs, goal: s.carbGoal, color: carbsColor)
+                MacroMiniBar(label: "F", value: s.fat, goal: s.fatGoal, color: fatColor)
+            }
+            .padding(.horizontal, 14)
+            .padding(.bottom, 12)
         }
         .widgetURL(URL(string: "macros://home"))
     }
@@ -164,6 +159,7 @@ struct MacroWidget: Widget {
     var body: some WidgetConfiguration {
         StaticConfiguration(kind: kind, provider: MacroTimelineProvider()) { entry in
             MacroWidgetView(entry: entry)
+                .containerBackground(Color(red: 0.07, green: 0.07, blue: 0.09), for: .widget)
         }
         .configurationDisplayName("Daily Macros")
         .description("Track your calories, protein, carbs, and fat at a glance.")
