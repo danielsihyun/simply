@@ -245,6 +245,7 @@ struct HomeView: View {
     private func pendingFoodRow(food: Food) -> some View {
         let grams = Float(inputText) ?? food.servingGrams
         let macros = food.macros(forGrams: grams)
+        let unitLabel = food.isCount ? "×" : "g"
 
         HStack(alignment: .top) {
             VStack(alignment: .leading, spacing: 2) {
@@ -277,7 +278,7 @@ struct HomeView: View {
                         }
                         .fixedSize()
 
-                        Text("g")
+                        Text(unitLabel)
                             .font(.labelSmall)
                             .foregroundColor(.textMuted)
                     }
@@ -1104,6 +1105,7 @@ struct HomeView: View {
 
         let name = customFoodName
         let serving = customServing
+        let isCount = customIsCount
         let cals = customCals
         let protein = customProtein
         let carbs = customCarbs
@@ -1129,7 +1131,8 @@ struct HomeView: View {
                 protein: protein,
                 carbs: carbs,
                 fat: fat,
-                barcode: barcode
+                barcode: barcode,
+                isCount: isCount
             ) {
                 await logService.addEntry(
                     userId: userId,
@@ -1280,6 +1283,11 @@ struct FoodEntryRow: View {
     @State private var editText = ""
     @FocusState private var editFocused: Bool
 
+    /// The display unit for this entry — "×" for count-based, "g" for grams
+    private var unitLabel: String {
+        entry.isCount ? "×" : "g"
+    }
+
     /// Recalculate macros proportionally from the entry's stored values
     private func previewMacros(forGrams g: Float) -> (cal: Float, protein: Float, carbs: Float, fat: Float) {
         let currentGrams = entry.grams
@@ -1322,7 +1330,7 @@ struct FoodEntryRow: View {
                                 .foregroundColor(.textMuted)
                         }
 
-                        Text("g")
+                        Text(unitLabel)
                             .font(.labelSmall)
                             .foregroundColor(.textMuted)
                     }
@@ -1426,7 +1434,7 @@ struct SuggestionDropdown: View {
                                 .font(.system(size: 14))
                                 .foregroundColor(.textPrimary)
 
-                            Text("\(food.servingLabel) · \(Int(food.servingGrams))g")
+                            Text("\(food.servingLabel) · \(Int(food.servingGrams))\(food.isCount ? "×" : "g")")
                                 .font(.system(size: 11))
                                 .foregroundColor(.textMuted)
                         }
