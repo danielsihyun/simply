@@ -369,150 +369,119 @@ struct HomeView: View {
         .padding(.bottom, 16)
     }
 
+    // MARK: - Meal header (unified to prevent layout shift)
+    @ViewBuilder
+    private func mealHeader(index: Int, calories: Float, showCopy: Bool) -> some View {
+        HStack {
+            Text("Meal \(index)")
+                .font(.labelMealHeader)
+                .foregroundColor(.textMuted)
+                .textCase(.uppercase)
+                .tracking(0.8)
+
+            Spacer()
+
+            ZStack {
+                // Cal count — visible when meal has entries
+                Text("\(Int(calories)) cal")
+                    .font(.monoTiny)
+                    .foregroundColor(.textVeryMuted)
+                    .opacity(calories > 0 ? 1 : 0)
+
+                // Copy button — visible when meal is empty and no pending
+                copyYesterdayButton
+                    .opacity(showCopy ? 1 : 0)
+                    .allowsHitTesting(showCopy)
+            }
+        }
+        .padding(.bottom, 2)
+    }
+
     // MARK: - Meal entries (pending item rendered inline)
     private var mealEntriesView: some View {
         let groups = groupedEntries()
         let hasPending = mode == .grams && pendingFood != nil
         let latestMeal = logService.todayEntries.map(\.mealIndex).max() ?? 0
 
-        return Group {
-            // Case 1: No entries at all
-            if groups.isEmpty {
+        // Whether we need an extra empty meal slot at the bottom
+        let needsExtraMeal = groups.isEmpty || currentMealIndex > latestMeal
+        let extraMealDisplayIndex = groups.isEmpty ? 1 : groups.count + 1
+
+        return VStack(alignment: .leading, spacing: 0) {
+            // Render each existing meal group
+            ForEach(Array(groups.enumerated()), id: \.offset) { mealIdx, group in
+                let isLastGroup = mealIdx == groups.count - 1
+                let pendingBelongsHere = hasPending && !pendingIsNewMeal && isLastGroup
+                let mealCal = group.reduce(0) { $0 + $1.calories }
+
                 VStack(alignment: .leading, spacing: 0) {
-                    HStack {
-                        Text("Meal 1")
-                            .font(.labelMealHeader)
-                            .foregroundColor(.textMuted)
-                            .textCase(.uppercase)
-                            .tracking(0.8)
+                    mealHeader(
+                        index: mealIdx + 1,
+                        calories: mealCal,
+                        showCopy: false
+                    )
 
-                        Spacer()
-
-                        if !hasPending {
-                            copyYesterdayButton
-                        }
-                    }
-                    .padding(.bottom, 2)
-
-                    // Pending item in empty state
-                    if hasPending, let food = pendingFood {
-                        pendingFoodRow(food: food)
-                    }
-                }
-            } else {
-                // Case 2: Has entries — render each meal group
-                ForEach(Array(groups.enumerated()), id: \.offset) { mealIdx, group in
-                    let groupMealIndex = group.first?.mealIndex ?? 0
-                    let isLastGroup = mealIdx == groups.count - 1
-                    // Pending belongs to this existing meal group
-                    let pendingBelongsHere = hasPending && !pendingIsNewMeal && isLastGroup
-
-                    VStack(alignment: .leading, spacing: 0) {
-                        HStack {
-                            Text("Meal \(mealIdx + 1)")
-                                .font(.labelMealHeader)
-                                .foregroundColor(.textMuted)
-                                .textCase(.uppercase)
-                                .tracking(0.8)
-
-                            Spacer()
-
-                            let mealCal = group.reduce(0) { $0 + $1.calories }
-                            Text("\(Int(mealCal)) cal")
-                                .font(.monoTiny)
-                                .foregroundColor(.textVeryMuted)
-                        }
-                        .padding(.bottom, 2)
-
-                        ForEach(group) { entry in
-                            FoodEntryRow(
-                                entry: entry,
-                                isEditing: editingEntryId == entry.id,
-                                onTapToEdit: {
-                                    editingEntryId = entry.id
-                                },
-                                onCancelEdit: {
-                                    editingEntryId = nil
-                                },
-                                onRemove: {
-                                    Task {
-                                        await logService.deleteEntry(entry)
-                                        await authService.loadProfile()
-                                        logService.pushToWidget(profile: authService.profile, macroColors: macroColors)
-                                    }
-                                },
-                                onUpdateGrams: { newGrams in
-                                    editingEntryId = nil
-                                    Task {
-                                        await logService.updateEntryGrams(entry, newGrams: newGrams)
-                                        await authService.loadProfile()
-                                        logService.pushToWidget(profile: authService.profile, macroColors: macroColors)
-                                    }
+                    ForEach(group) { entry in
+                        FoodEntryRow(
+                            entry: entry,
+                            isEditing: editingEntryId == entry.id,
+                            onTapToEdit: {
+                                editingEntryId = entry.id
+                            },
+                            onCancelEdit: {
+                                editingEntryId = nil
+                            },
+                            onRemove: {
+                                Task {
+                                    await logService.deleteEntry(entry)
+                                    await authService.loadProfile()
+                                    logService.pushToWidget(profile: authService.profile, macroColors: macroColors)
                                 }
-                            )
-                        }
-
-                        // Pending item appended to the last existing meal group
-                        if pendingBelongsHere, let food = pendingFood {
-                            pendingFoodRow(food: food)
-                        }
-
-                        // Divider between meal groups (not after last)
-                        if !isLastGroup || pendingIsNewMeal {
-                            Rectangle()
-                                .fill(Color.white.opacity(0.04))
-                                .frame(height: 1)
-                                .padding(.top, 9)
-                                .padding(.bottom, 8)
-                        }
+                            },
+                            onUpdateGrams: { newGrams in
+                                editingEntryId = nil
+                                Task {
+                                    await logService.updateEntryGrams(entry, newGrams: newGrams)
+                                    await authService.loadProfile()
+                                    logService.pushToWidget(profile: authService.profile, macroColors: macroColors)
+                                }
+                            }
+                        )
                     }
-                    .padding(.bottom, 4)
-                }
 
-                // Case 3: Pending item starts a new meal
-                if pendingIsNewMeal, let food = pendingFood {
-                    VStack(alignment: .leading, spacing: 0) {
-                        let existingMealCount = groups.count
-
-                        HStack {
-                            Text("Meal \(existingMealCount + 1)")
-                                .font(.labelMealHeader)
-                                .foregroundColor(.textMuted)
-                                .textCase(.uppercase)
-                                .tracking(0.8)
-
-                            Spacer()
-                        }
-                        .padding(.bottom, 2)
-
+                    // Pending item appended to the last existing meal group
+                    if pendingBelongsHere, let food = pendingFood {
                         pendingFoodRow(food: food)
                     }
-                    .padding(.bottom, 4)
-                }
 
-                // New meal divider (double-enter, no pending)
-                if !hasPending && currentMealIndex > latestMeal {
-                    let existingMealCount = groups.count
-
-                    Rectangle()
-                        .fill(Color.white.opacity(0.04))
-                        .frame(height: 1)
-                        .padding(.top, 9)
-                        .padding(.bottom, 8)
-
-                    HStack {
-                        Text("Meal \(existingMealCount + 1)")
-                            .font(.labelMealHeader)
-                            .foregroundColor(.textMuted)
-                            .textCase(.uppercase)
-                            .tracking(0.8)
-
-                        Spacer()
-
-                        copyYesterdayButton
+                    // Divider between meal groups (not after last unless new meal follows)
+                    if !isLastGroup || needsExtraMeal {
+                        Rectangle()
+                            .fill(Color.white.opacity(0.04))
+                            .frame(height: 1)
+                            .padding(.top, 9)
+                            .padding(.bottom, 8)
                     }
-                    .padding(.bottom, 2)
                 }
+                .padding(.bottom, 4)
+            }
+
+            // Extra meal slot: empty Meal 1, new meal via double-enter, or pending new meal
+            if needsExtraMeal {
+                let pendingHere = hasPending && (groups.isEmpty || pendingIsNewMeal)
+
+                VStack(alignment: .leading, spacing: 0) {
+                    mealHeader(
+                        index: extraMealDisplayIndex,
+                        calories: 0,
+                        showCopy: !pendingHere
+                    )
+
+                    if pendingHere, let food = pendingFood {
+                        pendingFoodRow(food: food)
+                    }
+                }
+                .padding(.bottom, 4)
             }
         }
     }
