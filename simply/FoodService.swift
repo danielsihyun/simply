@@ -84,7 +84,8 @@ final class FoodService: ObservableObject {
         protein: Float,
         carbs: Float,
         fat: Float,
-        barcode: String? = nil
+        barcode: String? = nil,
+        isCount: Bool = false
     ) async -> Food? {
         let externalId: String
         if let barcode = barcode {
@@ -93,16 +94,19 @@ final class FoodService: ObservableObject {
             externalId = "custom:\(UUID().uuidString)"
         }
 
+        let servingLabel = isCount ? "\(Int(servingGrams))×" : "\(Int(servingGrams))g"
+
         let insert = CustomFoodInsert(
             externalId: externalId,
             name: name.lowercased(),
             brand: barcode != nil ? "Scanned" : "Custom",
-            servingLabel: "\(Int(servingGrams))g",
+            servingLabel: servingLabel,
             servingGrams: servingGrams,
             calPerServing: calories,
             proteinPerServing: protein,
             carbsPerServing: carbs,
-            fatPerServing: fat
+            fatPerServing: fat,
+            isCount: isCount
         )
 
         do {
