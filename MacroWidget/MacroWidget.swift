@@ -38,7 +38,7 @@ struct MacroWidgetView: View {
     private var proteinPct: CGFloat { s.proteinGoal > 0 ? min(CGFloat(s.protein / s.proteinGoal), 1) : 0 }
     private var carbsPct: CGFloat { s.carbGoal > 0 ? min(CGFloat(s.carbs / s.carbGoal), 1) : 0 }
     private var fatPct: CGFloat { s.fatGoal > 0 ? min(CGFloat(s.fat / s.fatGoal), 1) : 0 }
-    private var remaining: Int { max(Int(s.calGoal - s.calories), 0) }
+    private var remaining: Int { Int(s.calGoal - s.calories) }
 
     var body: some View {
         ZStack {
@@ -63,15 +63,15 @@ struct MacroWidgetView: View {
 
                     // Center text
                     VStack(spacing: 1) {
-                        Text("\(remaining)")
+                        Text("\(abs(remaining))")
                             .font(.system(size: 22, weight: .bold, design: .rounded))
                             .foregroundColor(.white)
                             .minimumScaleFactor(0.6)
                             .lineLimit(1)
 
-                        Text("left")
+                        Text(remaining >= 0 ? "left" : "over")
                             .font(.system(size: 9, weight: .medium))
-                            .foregroundColor(.white.opacity(0.4))
+                            .foregroundColor(remaining >= 0 ? .white.opacity(0.4) : Color(red: 1.0, green: 0.47, blue: 0.47).opacity(0.8))
                     }
                 }
                 .frame(width: 72, height: 72)
