@@ -80,7 +80,7 @@ struct MacroWidgetView: View {
                 MacroMiniBar(label: "F", value: s.fat, goal: s.fatGoal, color: fatColor)
             }
             .padding(.horizontal, 14)
-            .padding(.bottom, 2)
+            .padding(.bottom, 6)
         }
         .widgetURL(URL(string: "macros://home"))
     }
@@ -118,12 +118,18 @@ struct MacroMiniBar: View {
     private var pct: CGFloat { goal > 0 ? min(CGFloat(value / goal), 1) : 0 }
 
     var body: some View {
-        VStack(spacing: 3) {
-            Text("\(Int(value))")
-                .font(.system(size: 11, weight: .semibold, design: .monospaced))
-                .foregroundColor(color)
-                .lineLimit(1)
-                .minimumScaleFactor(0.7)
+        VStack(spacing: 4) {
+            HStack(spacing: 2) {
+                Text("\(Int(value))")
+                    .font(.system(size: 11, weight: .semibold, design: .monospaced))
+                    .foregroundColor(color)
+                    .lineLimit(1)
+                    .minimumScaleFactor(0.7)
+
+                Text(label)
+                    .font(.system(size: 8, weight: .medium))
+                    .foregroundColor(.white.opacity(0.3))
+            }
 
             GeometryReader { geo in
                 ZStack(alignment: .leading) {
@@ -135,10 +141,6 @@ struct MacroMiniBar: View {
                 }
             }
             .frame(height: 2.5)
-
-            Text(label)
-                .font(.system(size: 8, weight: .medium))
-                .foregroundColor(.white.opacity(0.3))
         }
     }
 }
