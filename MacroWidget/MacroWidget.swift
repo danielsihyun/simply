@@ -59,7 +59,7 @@ struct MacroWidgetView: View {
 
                 VStack(spacing: 1) {
                     Text("\(abs(remaining))")
-                        .font(.system(size: 28, weight: .bold, design: .rounded))
+                        .font(.system(size: 32, weight: .bold, design: .rounded))
                         .foregroundColor(.white)
                         .minimumScaleFactor(0.5)
                         .lineLimit(1)
@@ -69,7 +69,7 @@ struct MacroWidgetView: View {
                         .foregroundColor(.white.opacity(0.4))
                 }
             }
-            .frame(width: 96, height: 96)
+            .frame(width: 104, height: 104)
 
             Spacer()
 
@@ -120,7 +120,7 @@ struct MacroMiniBar: View {
     var body: some View {
         VStack(spacing: 3) {
             Text("\(Int(value))")
-                .font(.system(size: 10, weight: .semibold, design: .monospaced))
+                .font(.system(size: 11, weight: .semibold, design: .monospaced))
                 .foregroundColor(color)
                 .lineLimit(1)
                 .minimumScaleFactor(0.7)
