@@ -59,7 +59,7 @@ struct MacroWidgetView: View {
 
                 VStack(spacing: 1) {
                     Text("\(abs(remaining))")
-                        .font(.system(size: 32, weight: .bold, design: .rounded))
+                        .font(.system(size: 30, weight: .bold, design: .rounded))
                         .foregroundColor(.white)
                         .minimumScaleFactor(0.5)
                         .lineLimit(1)
@@ -69,7 +69,7 @@ struct MacroWidgetView: View {
                         .foregroundColor(.white.opacity(0.4))
                 }
             }
-            .frame(width: 104, height: 104)
+            .frame(width: 112, height: 112)
 
             Spacer()
 
@@ -80,7 +80,7 @@ struct MacroWidgetView: View {
                 MacroMiniBar(label: "F", value: s.fat, goal: s.fatGoal, color: fatColor)
             }
             .padding(.horizontal, 14)
-            .padding(.bottom, 6)
+            .padding(.bottom, 12)
         }
         .widgetURL(URL(string: "macros://home"))
     }
