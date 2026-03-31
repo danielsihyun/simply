@@ -22,7 +22,6 @@ struct MacroTimelineProvider: TimelineProvider {
         let snapshot = SharedDefaults.load()
         let entry = MacroEntry(date: Date(), snapshot: snapshot)
 
-        // Refresh after 15 minutes or when the app triggers a reload
         let nextUpdate = Calendar.current.date(byAdding: .minute, value: 15, to: Date())!
         let timeline = Timeline(entries: [entry], policy: .after(nextUpdate))
         completion(timeline)
@@ -35,9 +34,6 @@ struct MacroWidgetView: View {
 
     private var s: MacroSnapshot { entry.snapshot }
     private var calPct: CGFloat { s.calGoal > 0 ? min(CGFloat(s.calories / s.calGoal), 1) : 0 }
-    private var proteinPct: CGFloat { s.proteinGoal > 0 ? min(CGFloat(s.protein / s.proteinGoal), 1) : 0 }
-    private var carbsPct: CGFloat { s.carbGoal > 0 ? min(CGFloat(s.carbs / s.carbGoal), 1) : 0 }
-    private var fatPct: CGFloat { s.fatGoal > 0 ? min(CGFloat(s.fat / s.fatGoal), 1) : 0 }
     private var remaining: Int { Int(s.calGoal - s.calories) }
 
     private var proteinColor: Color { Color(red: s.proteinColorR, green: s.proteinColorG, blue: s.proteinColorB) }
@@ -46,47 +42,45 @@ struct MacroWidgetView: View {
 
     var body: some View {
         VStack(spacing: 0) {
-            // Calorie ring + center text
-            ZStack {
-                // Track
-                Circle()
-                    .stroke(Color.white.opacity(0.08), lineWidth: 5)
+            Spacer()
 
-                // Calorie arc
+            // Calorie ring
+            ZStack {
+                Circle()
+                    .stroke(Color.white.opacity(0.08), lineWidth: 6)
+
                 Circle()
                     .trim(from: 0, to: calPct)
                     .stroke(
                         calorieGradient,
-                        style: StrokeStyle(lineWidth: 5, lineCap: .round)
+                        style: StrokeStyle(lineWidth: 6, lineCap: .round)
                     )
                     .rotationEffect(.degrees(-90))
 
-                // Center text
                 VStack(spacing: 1) {
                     Text("\(abs(remaining))")
-                        .font(.system(size: 22, weight: .bold, design: .rounded))
+                        .font(.system(size: 28, weight: .bold, design: .rounded))
                         .foregroundColor(.white)
-                        .minimumScaleFactor(0.6)
+                        .minimumScaleFactor(0.5)
                         .lineLimit(1)
 
                     Text(remaining >= 0 ? "left" : "over")
-                        .font(.system(size: 9, weight: .medium))
+                        .font(.system(size: 10, weight: .medium))
                         .foregroundColor(.white.opacity(0.4))
                 }
             }
-            .frame(width: 72, height: 72)
-            .padding(.top, 10)
+            .frame(width: 96, height: 96)
 
-            Spacer().frame(height: 8)
+            Spacer()
 
-            // Macro bars
+            // Macro bars pinned to bottom
             HStack(spacing: 8) {
                 MacroMiniBar(label: "P", value: s.protein, goal: s.proteinGoal, color: proteinColor)
                 MacroMiniBar(label: "C", value: s.carbs, goal: s.carbGoal, color: carbsColor)
                 MacroMiniBar(label: "F", value: s.fat, goal: s.fatGoal, color: fatColor)
             }
             .padding(.horizontal, 14)
-            .padding(.bottom, 12)
+            .padding(.bottom, 2)
         }
         .widgetURL(URL(string: "macros://home"))
     }
@@ -94,21 +88,18 @@ struct MacroWidgetView: View {
     private var calorieGradient: LinearGradient {
         let over = s.calories - s.calGoal
         if over >= 100 {
-            // Red when 100+ over goal
             return LinearGradient(
                 colors: [Color(red: 1.0, green: 0.35, blue: 0.35), Color(red: 0.85, green: 0.2, blue: 0.2)],
                 startPoint: .leading,
                 endPoint: .trailing
             )
         } else if calPct >= 1 {
-            // Green when at or slightly over goal
             return LinearGradient(
                 colors: [Color(red: 0.3, green: 0.85, blue: 0.45), Color(red: 0.2, green: 0.7, blue: 0.35)],
                 startPoint: .leading,
                 endPoint: .trailing
             )
         }
-        // Blue/purple when under goal
         return LinearGradient(
             colors: [Color(red: 0.35, green: 0.55, blue: 1.0), Color(red: 0.6, green: 0.4, blue: 1.0)],
             startPoint: .leading,
