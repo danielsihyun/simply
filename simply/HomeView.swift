@@ -1173,11 +1173,7 @@ struct DaySummaryView: View {
                     Capsule()
                         .fill(Color.white.opacity(0.06))
                     Capsule()
-                        .fill(
-                            calPct >= 1
-                                ? LinearGradient(colors: [.calBarGreen, .calBarGreenDark], startPoint: .leading, endPoint: .trailing)
-                                : LinearGradient(colors: [.calBarBlue, .calBarPurple], startPoint: .leading, endPoint: .trailing)
-                        )
+                        .fill(Color.calBarGreen)
                         .frame(width: geo.size.width * calPct)
                         .animation(.easeOut(duration: 0.4), value: calPct)
                 }
