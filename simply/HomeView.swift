@@ -1173,7 +1173,7 @@ struct DaySummaryView: View {
                     Capsule()
                         .fill(Color.white.opacity(0.06))
                     Capsule()
-                        .fill(Color.calBarGreen)
+                        .fill(cal > calGoal + 100 ? Color.red : Color.calBarGreen)
                         .frame(width: geo.size.width * calPct)
                         .animation(.easeOut(duration: 0.4), value: calPct)
                 }
