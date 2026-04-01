@@ -52,7 +52,7 @@ struct MacroWidgetView: View {
                 Circle()
                     .trim(from: 0, to: calPct)
                     .stroke(
-                        calorieGradient,
+                        calorieColor,
                         style: StrokeStyle(lineWidth: 6, lineCap: .round)
                     )
                     .rotationEffect(.degrees(-90))
@@ -85,26 +85,12 @@ struct MacroWidgetView: View {
         .widgetURL(URL(string: "macros://home"))
     }
 
-    private var calorieGradient: LinearGradient {
+    private var calorieColor: Color {
         let over = s.calories - s.calGoal
         if over >= 100 {
-            return LinearGradient(
-                colors: [Color(red: 1.0, green: 0.35, blue: 0.35), Color(red: 0.85, green: 0.2, blue: 0.2)],
-                startPoint: .leading,
-                endPoint: .trailing
-            )
-        } else if calPct >= 1 {
-            return LinearGradient(
-                colors: [Color(red: 0.3, green: 0.85, blue: 0.45), Color(red: 0.2, green: 0.7, blue: 0.35)],
-                startPoint: .leading,
-                endPoint: .trailing
-            )
+            return Color(red: 1.0, green: 0.35, blue: 0.35)
         }
-        return LinearGradient(
-            colors: [Color(red: 0.35, green: 0.55, blue: 1.0), Color(red: 0.6, green: 0.4, blue: 1.0)],
-            startPoint: .leading,
-            endPoint: .trailing
-        )
+        return Color(red: 0.3, green: 0.85, blue: 0.45)
     }
 }
 
