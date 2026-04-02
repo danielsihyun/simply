@@ -18,6 +18,7 @@ struct AnalyticsView: View {
 
     @State private var chartEntries: [MacroChartEntry] = []
     @State private var goalMetDays: Set<Int> = []
+    @State private var currentDay: Int = 0
     @State private var isLoading = true
 
     private var calGoal: Float { Float(authService.profile?.calGoal ?? 2200) }
@@ -225,7 +226,7 @@ struct AnalyticsView: View {
         let range = cal.range(of: .day, in: .month, for: firstOfMonth)!
         let daysInMonth = range.count
         let firstWeekday = cal.component(.weekday, from: firstOfMonth)
-        let todayDay = cal.component(.day, from: today)
+        let todayDay = currentDay > 0 ? currentDay : cal.component(.day, from: today)
 
         return VStack(alignment: .leading, spacing: 0) {
             Text("GOAL MET")
@@ -251,7 +252,8 @@ struct AnalyticsView: View {
                 dotGrid(
                     daysInMonth: daysInMonth,
                     firstWeekday: firstWeekday,
-                    todayDay: todayDay
+                    todayDay: todayDay,
+                    metDays: goalMetDays
                 )
             }
         }
@@ -262,40 +264,59 @@ struct AnalyticsView: View {
     }
 
     // MARK: - Dot grid
-    private func dotGrid(daysInMonth: Int, firstWeekday: Int, todayDay: Int) -> some View {
-        let columns = Array(repeating: GridItem(.fixed(10), spacing: 8), count: 7)
+    private func dotGrid(daysInMonth: Int, firstWeekday: Int, todayDay: Int, metDays: Set<Int>) -> some View {
         let offset = firstWeekday - 1
 
-        return LazyVGrid(columns: columns, spacing: 8) {
-            ForEach(0..<offset, id: \.self) { _ in
-                Color.clear.frame(width: 10, height: 10)
-            }
+        // Build flat array: nil for blank offset cells, Int for day numbers
+        let cells: [Int?] = Array(repeating: nil, count: offset) + (1...daysInMonth).map { $0 }
+        let weeks = stride(from: 0, to: cells.count, by: 7).map {
+            Array(cells[$0..<min($0 + 7, cells.count)])
+        }
 
-            ForEach(1...daysInMonth, id: \.self) { day in
-                let isMet = goalMetDays.contains(day)
-                let isToday = day == todayDay
-                let isFuture = day > todayDay
-
-                ZStack {
-                    if isToday {
-                        Circle()
-                            .strokeBorder(isMet ? Color.white : Color.white.opacity(0.3), lineWidth: 1.5)
-                            .frame(width: 10, height: 10)
-                        if isMet {
-                            Circle()
-                                .fill(Color.white)
-                                .frame(width: 5, height: 5)
+        return VStack(spacing: 8) {
+            ForEach(Array(weeks.enumerated()), id: \.offset) { _, week in
+                HStack(spacing: 8) {
+                    ForEach(Array(week.enumerated()), id: \.offset) { _, cell in
+                        if let day = cell {
+                            dotCell(day: day, todayDay: todayDay, metDays: metDays)
+                        } else {
+                            Color.clear.frame(width: 10, height: 10)
                         }
-                    } else if isMet {
-                        Circle()
-                            .fill(Color.white.opacity(0.9))
-                            .frame(width: 10, height: 10)
-                    } else {
-                        Circle()
-                            .fill(Color.white.opacity(isFuture ? 0.06 : 0.12))
-                            .frame(width: 10, height: 10)
+                    }
+                    // Pad trailing cells in last row
+                    if week.count < 7 {
+                        ForEach(0..<(7 - week.count), id: \.self) { _ in
+                            Color.clear.frame(width: 10, height: 10)
+                        }
                     }
                 }
+            }
+        }
+    }
+
+    private func dotCell(day: Int, todayDay: Int, metDays: Set<Int>) -> some View {
+        let isMet = metDays.contains(day)
+        let isToday = day == todayDay
+        let isFuture = day > todayDay
+
+        return ZStack {
+            if isToday {
+                Circle()
+                    .strokeBorder(isMet ? Color.white : Color.white.opacity(0.3), lineWidth: 1.5)
+                    .frame(width: 10, height: 10)
+                if isMet {
+                    Circle()
+                        .fill(Color.white)
+                        .frame(width: 5, height: 5)
+                }
+            } else if isMet {
+                Circle()
+                    .fill(Color.white.opacity(0.9))
+                    .frame(width: 10, height: 10)
+            } else {
+                Circle()
+                    .fill(Color.white.opacity(isFuture ? 0.06 : 0.12))
+                    .frame(width: 10, height: 10)
             }
         }
     }
@@ -321,10 +342,11 @@ struct AnalyticsView: View {
             let today = Date()
             let components = cal.dateComponents([.year, .month], from: today)
             let firstOfMonth = cal.date(from: components)!
+            let todayDay = cal.component(.day, from: today)
 
             let formatter = DateFormatter()
             formatter.dateFormat = "yyyy-MM-dd"
-            formatter.timeZone = .current
+            formatter.timeZone = cal.timeZone
 
             let thirtyDaysAgo = cal.date(byAdding: .day, value: -29, to: cal.startOfDay(for: today))!
             let queryStart = min(firstOfMonth, thirtyDaysAgo)
@@ -365,13 +387,14 @@ struct AnalyticsView: View {
 
             let goal = calGoal
             var metDays: Set<Int> = []
-            let monthString = formatter.string(from: firstOfMonth).prefix(7)
+            let monthPrefix = String(formatter.string(from: firstOfMonth).prefix(7))
 
             for (dateStr, data) in grouped {
-                guard dateStr.hasPrefix(String(monthString)) else { continue }
+                guard dateStr.hasPrefix(monthPrefix) else { continue }
                 if abs(data.cal - goal) <= 100 {
-                    if let date = formatter.date(from: dateStr) {
-                        let day = cal.component(.day, from: date)
+                    // Extract day directly from "YYYY-MM-DD" string to avoid timezone shifts
+                    let dayStr = dateStr.suffix(2)
+                    if let day = Int(dayStr) {
                         metDays.insert(day)
                     }
                 }
@@ -380,6 +403,7 @@ struct AnalyticsView: View {
             await MainActor.run {
                 self.chartEntries = chart
                 self.goalMetDays = metDays
+                self.currentDay = todayDay
                 self.isLoading = false
             }
         } catch {
