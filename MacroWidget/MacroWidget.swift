@@ -20,10 +20,45 @@ struct MacroTimelineProvider: TimelineProvider {
 
     func getTimeline(in context: Context, completion: @escaping (Timeline<MacroEntry>) -> Void) {
         let snapshot = SharedDefaults.load()
-        let entry = MacroEntry(date: Date(), snapshot: snapshot)
+        let now = Date()
+        let calendar = Calendar.current
 
-        let nextUpdate = Calendar.current.date(byAdding: .minute, value: 15, to: Date())!
-        let timeline = Timeline(entries: [entry], policy: .after(nextUpdate))
+        // Check if the snapshot is from a previous day — if so, show zeros
+        let snapshotIsToday = calendar.isDateInToday(snapshot.lastUpdated)
+        let currentSnapshot = snapshotIsToday ? snapshot : MacroSnapshot(
+            calories: 0,
+            calGoal: snapshot.calGoal,
+            protein: 0,
+            proteinGoal: snapshot.proteinGoal,
+            carbs: 0,
+            carbGoal: snapshot.carbGoal,
+            fat: 0,
+            fatGoal: snapshot.fatGoal,
+            lastUpdated: now,
+            proteinColorR: snapshot.proteinColorR,
+            proteinColorG: snapshot.proteinColorG,
+            proteinColorB: snapshot.proteinColorB,
+            carbsColorR: snapshot.carbsColorR,
+            carbsColorG: snapshot.carbsColorG,
+            carbsColorB: snapshot.carbsColorB,
+            fatColorR: snapshot.fatColorR,
+            fatColorG: snapshot.fatColorG,
+            fatColorB: snapshot.fatColorB
+        )
+
+        let entry = MacroEntry(date: now, snapshot: currentSnapshot)
+
+        // Schedule refresh right after midnight
+        let tomorrow = calendar.startOfDay(for: calendar.date(byAdding: .day, value: 1, to: now)!)
+        let midnightRefresh = calendar.date(byAdding: .second, value: 5, to: tomorrow)!
+
+        // Also refresh in 15 min for normal updates
+        let regularRefresh = calendar.date(byAdding: .minute, value: 15, to: now)!
+
+        // Use whichever comes first
+        let nextRefresh = min(midnightRefresh, regularRefresh)
+
+        let timeline = Timeline(entries: [entry], policy: .after(nextRefresh))
         completion(timeline)
     }
 }
