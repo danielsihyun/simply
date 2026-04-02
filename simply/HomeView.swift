@@ -818,17 +818,34 @@ struct HomeView: View {
         let targetDate = selectedDate
         let targetMeal = currentMealIndex
 
+        // Figure out what display position (0-based) the current meal is at.
+        // Today's groups give us the ordered list of meal indices;
+        // the current empty meal slot is one beyond the last group.
+        let todayGroups = groupedEntries()
+        let todayMealIndices = todayGroups.map { $0.first?.mealIndex ?? 0 }
+        let displayPosition: Int
+        if let pos = todayMealIndices.firstIndex(of: targetMeal) {
+            displayPosition = pos
+        } else {
+            // Current meal is a new empty slot beyond existing groups
+            displayPosition = todayGroups.count
+        }
+
         isCopyingMeal = true
 
         Task {
             let yesterdayEntries = await logService.preloadEntries(userId: userId, date: yesterday)
 
-            let availableMeals = Set(yesterdayEntries.map(\.mealIndex)).sorted()
+            // Group yesterday's entries the same way we group today's
+            let yesterdayMealIndices = Array(Set(yesterdayEntries.map(\.mealIndex))).sorted()
             let matchingEntries: [FoodLogEntry]
 
-            if availableMeals.contains(targetMeal) {
-                matchingEntries = yesterdayEntries.filter { $0.mealIndex == targetMeal }
-            } else if let lastMeal = availableMeals.last {
+            if displayPosition < yesterdayMealIndices.count {
+                // Match by display position — the Nth meal group
+                let yesterdayMealIndex = yesterdayMealIndices[displayPosition]
+                matchingEntries = yesterdayEntries.filter { $0.mealIndex == yesterdayMealIndex }
+            } else if let lastMeal = yesterdayMealIndices.last {
+                // Fallback: copy the last meal from yesterday
                 matchingEntries = yesterdayEntries.filter { $0.mealIndex == lastMeal }
             } else {
                 matchingEntries = []
