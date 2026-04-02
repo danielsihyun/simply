@@ -246,13 +246,13 @@ final class LogService: ObservableObject {
         }
     }
 
-    // MARK: - Update streak via Edge Function
+    // MARK: - Update streak via Postgres function
     private func updateStreak(logDate: String) async {
         do {
-            let _: Data = try await supabase.functions.invoke(
-                "update-streak",
-                options: .init(body: ["log_date": logDate])
-            )
+            let _: AnyJSON = try await supabase
+                .rpc("update_streak", params: ["p_log_date": logDate])
+                .execute()
+                .value
         } catch {
             print("Streak update error: \(error)")
         }
