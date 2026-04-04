@@ -228,37 +228,37 @@ struct AnalyticsView: View {
         let firstWeekday = cal.component(.weekday, from: firstOfMonth)
         let todayDay = currentDay > 0 ? currentDay : cal.component(.day, from: today)
 
-        return VStack(alignment: .leading, spacing: 0) {
-            Text("GOAL MET")
-                .font(.system(size: 11, weight: .semibold))
-                .foregroundColor(.textMuted)
-                .tracking(0.8)
-                .padding(.bottom, 14)
+        return ZStack(alignment: .trailing) {
+            // Left side content
+            VStack(alignment: .leading, spacing: 0) {
+                Text("GOAL MET")
+                    .font(.system(size: 11, weight: .semibold))
+                    .foregroundColor(.textMuted)
+                    .tracking(0.8)
+                    .padding(.bottom, 14)
 
-            HStack(alignment: .top, spacing: 0) {
-                VStack(alignment: .leading, spacing: 4) {
-                    Text("\(goalMetDays.count)")
-                        .font(.system(size: 42, weight: .medium, design: .monospaced))
-                        .foregroundColor(.white)
+                Text("\(goalMetDays.count)")
+                    .font(.system(size: 42, weight: .medium, design: .monospaced))
+                    .foregroundColor(.white)
+                    .padding(.bottom, 4)
 
-                    Text("This Month")
-                        .font(.system(size: 13))
-                        .foregroundColor(.textMuted)
-                }
-                .frame(minWidth: 90, alignment: .leading)
+                Text("This Month")
+                    .font(.system(size: 13))
+                    .foregroundColor(.textMuted)
 
-                Spacer()
-
-                dotGrid(
-                    daysInMonth: daysInMonth,
-                    firstWeekday: firstWeekday,
-                    todayDay: todayDay,
-                    metDays: goalMetDays
-                )
+                Spacer(minLength: 0)
             }
+            .frame(maxWidth: .infinity, alignment: .leading)
+
+            // Dot grid — vertically centered in the full card
+            dotGrid(
+                daysInMonth: daysInMonth,
+                firstWeekday: firstWeekday,
+                todayDay: todayDay,
+                metDays: goalMetDays
+            )
         }
-        .padding(.horizontal, 16)
-        .padding(.vertical, 14)
+        .padding(14)
         .background(Color.bgCard)
         .cornerRadius(14)
     }
