@@ -257,6 +257,7 @@ struct AnalyticsView: View {
                 todayDay: todayDay,
                 metDays: goalMetDays
             )
+            .padding(.trailing, 6)
         }
         .padding(14)
         .background(Color.bgCard)
