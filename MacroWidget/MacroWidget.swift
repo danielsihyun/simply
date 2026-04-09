@@ -74,6 +74,7 @@ struct MacroWidgetView: View {
     private var calPct: CGFloat { s.calGoal > 0 ? min(CGFloat(s.calories / s.calGoal), 1) : 0 }
     private var remaining: Int { Int(s.calGoal - s.calories) }
 
+    private var caloriesColor: Color { Color(red: s.caloriesColorR, green: s.caloriesColorG, blue: s.caloriesColorB) }
     private var proteinColor: Color { Color(red: s.proteinColorR, green: s.proteinColorG, blue: s.proteinColorB) }
     private var carbsColor: Color { Color(red: s.carbsColorR, green: s.carbsColorG, blue: s.carbsColorB) }
     private var fatColor: Color { Color(red: s.fatColorR, green: s.fatColorG, blue: s.fatColorB) }
@@ -82,7 +83,6 @@ struct MacroWidgetView: View {
         VStack(spacing: 0) {
             Spacer()
 
-            // Calorie ring
             ZStack {
                 Circle()
                     .stroke(Color.white.opacity(0.08), lineWidth: 6)
@@ -90,7 +90,7 @@ struct MacroWidgetView: View {
                 Circle()
                     .trim(from: 0, to: calPct)
                     .stroke(
-                        calorieColor,
+                        ringColor,
                         style: StrokeStyle(lineWidth: 6, lineCap: .round)
                     )
                     .rotationEffect(.degrees(-90))
@@ -111,7 +111,6 @@ struct MacroWidgetView: View {
 
             Spacer()
 
-            // Macro bars pinned to bottom
             HStack(spacing: 8) {
                 MacroMiniBar(label: "P", value: s.protein, goal: s.proteinGoal, color: proteinColor)
                 MacroMiniBar(label: "C", value: s.carbs, goal: s.carbGoal, color: carbsColor)
@@ -123,12 +122,12 @@ struct MacroWidgetView: View {
         .widgetURL(URL(string: "macros://home"))
     }
 
-    private var calorieColor: Color {
+    private var ringColor: Color {
         let over = s.calories - s.calGoal
         if over >= 100 {
             return Color(red: 1.0, green: 0.35, blue: 0.35)
         }
-        return Color(red: 0.3, green: 0.85, blue: 0.45)
+        return caloriesColor
     }
 }
 
