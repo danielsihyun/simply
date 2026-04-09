@@ -10,7 +10,7 @@ struct MacroColorPickerSection: View {
 
     var body: some View {
         VStack(alignment: .leading, spacing: 0) {
-            Text("MACRO COLORS")
+            Text("COLORS")
                 .font(.system(size: 11, weight: .semibold))
                 .foregroundColor(.textMuted)
                 .tracking(0.8)
@@ -33,7 +33,6 @@ struct MacroColorPickerSection: View {
             }
             .padding(.horizontal, 16)
 
-            // Palette row — slides in when editing
             if let target = editing {
                 let selectedHex = hexFor(target)
 
