@@ -1,7 +1,6 @@
 import Foundation
 import WidgetKit
 
-// MARK: - Shared data model between app and widget
 struct MacroSnapshot: Codable {
     let calories: Float
     let calGoal: Float
@@ -14,6 +13,9 @@ struct MacroSnapshot: Codable {
     let lastUpdated: Date
 
     // Macro colors (stored as RGB)
+    let caloriesColorR: Double
+    let caloriesColorG: Double
+    let caloriesColorB: Double
     let proteinColorR: Double
     let proteinColorG: Double
     let proteinColorB: Double
@@ -30,9 +32,10 @@ struct MacroSnapshot: Codable {
         carbs: 0, carbGoal: 250,
         fat: 0, fatGoal: 70,
         lastUpdated: Date(),
-        proteinColorR: 0.47, proteinColorG: 0.75, proteinColorB: 1.0,
-        carbsColorR: 1.0, carbsColorG: 0.78, carbsColorB: 0.35,
-        fatColorR: 1.0, fatColorG: 0.47, fatColorB: 0.47
+        caloriesColorR: 0.36, caloriesColorG: 0.61, caloriesColorB: 0.96,
+        proteinColorR: 0.42, proteinColorG: 0.87, proteinColorB: 0.72,
+        carbsColorR: 0.69, carbsColorG: 0.49, carbsColorB: 1.0,
+        fatColorR: 0.96, fatColorG: 0.64, fatColorB: 0.38
     )
 }
 
