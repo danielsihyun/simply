@@ -1,10 +1,11 @@
 import SwiftUI
 import Combine
+import WidgetKit
 
 class MacroColors: ObservableObject {
     @AppStorage("macro_calories_hex") private var caloriesHex: String = "#5B9CF5"
     @AppStorage("macro_protein_hex")  private var proteinHex: String  = "#6BDFB8"
-    @AppStorage("macro_carbs_hex")    private var carbsHex: String    = "#7EB6FF"
+    @AppStorage("macro_carbs_hex")    private var carbsHex: String    = "#B07EFF"
     @AppStorage("macro_fat_hex")      private var fatHex: String      = "#F4A261"
 
     static let palette: [(name: String, hex: String)] = [
@@ -31,18 +32,22 @@ class MacroColors: ObservableObject {
 
     var caloriesHexValue: String {
         get { caloriesHex }
-        set { objectWillChange.send(); caloriesHex = newValue }
+        set { objectWillChange.send(); caloriesHex = newValue; reloadWidget() }
     }
     var proteinHexValue: String {
         get { proteinHex }
-        set { objectWillChange.send(); proteinHex = newValue }
+        set { objectWillChange.send(); proteinHex = newValue; reloadWidget() }
     }
     var carbsHexValue: String {
         get { carbsHex }
-        set { objectWillChange.send(); carbsHex = newValue }
+        set { objectWillChange.send(); carbsHex = newValue; reloadWidget() }
     }
     var fatHexValue: String {
         get { fatHex }
-        set { objectWillChange.send(); fatHex = newValue }
+        set { objectWillChange.send(); fatHex = newValue; reloadWidget() }
+    }
+
+    private func reloadWidget() {
+        WidgetCenter.shared.reloadTimelines(ofKind: "MacroWidget")
     }
 }
