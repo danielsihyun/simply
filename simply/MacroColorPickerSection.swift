@@ -5,7 +5,7 @@ struct MacroColorPickerSection: View {
     @State private var editing: MacroTarget? = nil
 
     enum MacroTarget: String, CaseIterable {
-        case protein, carbs, fat
+        case calories, protein, carbs, fat
     }
 
     var body: some View {
@@ -17,13 +17,21 @@ struct MacroColorPickerSection: View {
                 .padding(.bottom, 14)
 
             HStack(spacing: 0) {
+                colorCircle(label: "Calories", target: .calories, hex: macroColors.caloriesHexValue)
+                Spacer()
+
+                Rectangle()
+                    .fill(Color.white.opacity(0.06))
+                    .frame(width: 1, height: 28)
+
+                Spacer()
                 colorCircle(label: "Protein", target: .protein, hex: macroColors.proteinHexValue)
                 Spacer()
                 colorCircle(label: "Carbs", target: .carbs, hex: macroColors.carbsHexValue)
                 Spacer()
                 colorCircle(label: "Fat", target: .fat, hex: macroColors.fatHexValue)
             }
-            .padding(.horizontal, 40)
+            .padding(.horizontal, 16)
 
             // Palette row — slides in when editing
             if let target = editing {
@@ -93,17 +101,19 @@ struct MacroColorPickerSection: View {
 
     private func hexFor(_ target: MacroTarget) -> String {
         switch target {
-        case .protein: return macroColors.proteinHexValue
-        case .carbs: return macroColors.carbsHexValue
-        case .fat: return macroColors.fatHexValue
+        case .calories: return macroColors.caloriesHexValue
+        case .protein:  return macroColors.proteinHexValue
+        case .carbs:    return macroColors.carbsHexValue
+        case .fat:      return macroColors.fatHexValue
         }
     }
 
     private func setHex(_ hex: String, for target: MacroTarget) {
         switch target {
-        case .protein: macroColors.proteinHexValue = hex
-        case .carbs: macroColors.carbsHexValue = hex
-        case .fat: macroColors.fatHexValue = hex
+        case .calories: macroColors.caloriesHexValue = hex
+        case .protein:  macroColors.proteinHexValue = hex
+        case .carbs:    macroColors.carbsHexValue = hex
+        case .fat:      macroColors.fatHexValue = hex
         }
     }
 }
