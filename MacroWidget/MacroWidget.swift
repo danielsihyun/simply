@@ -194,9 +194,10 @@ struct MacroWidget: Widget {
         carbs: 180, carbGoal: 250,
         fat: 45, fatGoal: 70,
         lastUpdated: Date(),
-        proteinColorR: 0.47, proteinColorG: 0.75, proteinColorB: 1.0,
-        carbsColorR: 1.0, carbsColorG: 0.78, carbsColorB: 0.35,
-        fatColorR: 1.0, fatColorG: 0.47, fatColorB: 0.47
+        caloriesColorR: 0.36, caloriesColorG: 0.61, caloriesColorB: 0.96,
+        proteinColorR: 0.42, proteinColorG: 0.87, proteinColorB: 0.72,
+        carbsColorR: 0.69, carbsColorG: 0.49, carbsColorB: 1.0,
+        fatColorR: 0.96, fatColorG: 0.64, fatColorB: 0.38
     ))
     MacroEntry(date: Date(), snapshot: MacroSnapshot(
         calories: 2400, calGoal: 2200,
@@ -204,8 +205,9 @@ struct MacroWidget: Widget {
         carbs: 250, carbGoal: 250,
         fat: 70, fatGoal: 70,
         lastUpdated: Date(),
-        proteinColorR: 0.47, proteinColorG: 0.75, proteinColorB: 1.0,
-        carbsColorR: 1.0, carbsColorG: 0.78, carbsColorB: 0.35,
-        fatColorR: 1.0, fatColorG: 0.47, fatColorB: 0.47
+        caloriesColorR: 0.36, caloriesColorG: 0.61, caloriesColorB: 0.96,
+        proteinColorR: 0.42, proteinColorG: 0.87, proteinColorB: 0.72,
+        carbsColorR: 0.69, carbsColorG: 0.49, carbsColorB: 1.0,
+        fatColorR: 0.96, fatColorG: 0.64, fatColorB: 0.38
     ))
 }
