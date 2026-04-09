@@ -41,9 +41,10 @@ final class LogService: ObservableObject {
 
     // MARK: - Push snapshot to widget
     func pushToWidget(profile: Profile?, macroColors: MacroColors) {
-        let pComps = UIColor(macroColors.protein).cgColor.components ?? [0.47, 0.75, 1.0, 1.0]
-        let cComps = UIColor(macroColors.carbs).cgColor.components ?? [1.0, 0.78, 0.35, 1.0]
-        let fComps = UIColor(macroColors.fat).cgColor.components ?? [1.0, 0.47, 0.47, 1.0]
+        let calComps = UIColor(macroColors.calories).cgColor.components ?? [0.36, 0.61, 0.96, 1.0]
+        let pComps   = UIColor(macroColors.protein).cgColor.components  ?? [0.42, 0.87, 0.72, 1.0]
+        let cComps   = UIColor(macroColors.carbs).cgColor.components    ?? [0.69, 0.49, 1.0, 1.0]
+        let fComps   = UIColor(macroColors.fat).cgColor.components      ?? [0.96, 0.64, 0.38, 1.0]
 
         let snapshot = MacroSnapshot(
             calories: totalCalories,
@@ -55,6 +56,7 @@ final class LogService: ObservableObject {
             fat: totalFat,
             fatGoal: Float(profile?.fatGoal ?? 70),
             lastUpdated: Date(),
+            caloriesColorR: Double(calComps[0]), caloriesColorG: Double(calComps[1]), caloriesColorB: Double(calComps[2]),
             proteinColorR: Double(pComps[0]), proteinColorG: Double(pComps[1]), proteinColorB: Double(pComps[2]),
             carbsColorR: Double(cComps[0]), carbsColorG: Double(cComps[1]), carbsColorB: Double(cComps[2]),
             fatColorR: Double(fComps[0]), fatColorG: Double(fComps[1]), fatColorB: Double(fComps[2])
