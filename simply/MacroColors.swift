@@ -1,12 +1,11 @@
 import SwiftUI
 import Combine
 
-/// Persisted macro colors backed by @AppStorage.
-/// Inject as .environmentObject(macroColors) at the app root.
 class MacroColors: ObservableObject {
-    @AppStorage("macro_protein_hex") private var proteinHex: String = "#6BDFB8"
-    @AppStorage("macro_carbs_hex")   private var carbsHex: String   = "#7EB6FF"
-    @AppStorage("macro_fat_hex")     private var fatHex: String     = "#F4A261"
+    @AppStorage("macro_calories_hex") private var caloriesHex: String = "#5B9CF5"
+    @AppStorage("macro_protein_hex")  private var proteinHex: String  = "#6BDFB8"
+    @AppStorage("macro_carbs_hex")    private var carbsHex: String    = "#7EB6FF"
+    @AppStorage("macro_fat_hex")      private var fatHex: String      = "#F4A261"
 
     static let palette: [(name: String, hex: String)] = [
         ("Mint",    "#6BDFB8"),
@@ -25,10 +24,15 @@ class MacroColors: ObservableObject {
         ("Coral",   "#FF8A73"),
     ]
 
-    var protein: Color { Color(hex: proteinHex) }
-    var carbs: Color   { Color(hex: carbsHex) }
-    var fat: Color     { Color(hex: fatHex) }
+    var calories: Color { Color(hex: caloriesHex) }
+    var protein: Color  { Color(hex: proteinHex) }
+    var carbs: Color    { Color(hex: carbsHex) }
+    var fat: Color      { Color(hex: fatHex) }
 
+    var caloriesHexValue: String {
+        get { caloriesHex }
+        set { objectWillChange.send(); caloriesHex = newValue }
+    }
     var proteinHexValue: String {
         get { proteinHex }
         set { objectWillChange.send(); proteinHex = newValue }
