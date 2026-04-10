@@ -9,20 +9,22 @@ class MacroColors: ObservableObject {
     @AppStorage("macro_fat_hex")      private var fatHex: String      = "#F4A261"
 
     static let palette: [(name: String, hex: String)] = [
-        ("Mint",    "#6BDFB8"),
-        ("Teal",    "#4DD8C0"),
-        ("Green",   "#66D97F"),
-        ("Sky",     "#7EB6FF"),
-        ("Blue",    "#5B9CF5"),
-        ("Indigo",  "#8B8CFF"),
-        ("Violet",  "#B07EFF"),
-        ("Pink",    "#F27BAA"),
-        ("Rose",    "#FF6B8A"),
-        ("Orange",  "#F4A261"),
-        ("Amber",   "#FFB84D"),
-        ("Yellow",  "#F0D56E"),
-        ("Red",     "#FF6F61"),
-        ("Coral",   "#FF8A73"),
+        ("Red",     "#FF9AA2"),
+        ("Coral",   "#FFB3A7"),
+        ("Orange",  "#FFCBA4"),
+        ("Peach",   "#FFDAB9"),
+        ("Amber",   "#FFE5A0"),
+        ("Yellow",  "#FFF4B3"),
+        ("Lime",    "#DCEDA1"),
+        ("Green",   "#B5E8A8"),
+        ("Mint",    "#A8E6CF"),
+        ("Teal",    "#A0E7E5"),
+        ("Sky",     "#A8D8F0"),
+        ("Blue",    "#A2C4F5"),
+        ("Indigo",  "#B5B5F0"),
+        ("Violet",  "#C8A8E9"),
+        ("Lavender","#D8BFD8"),
+        ("Pink",    "#F7B9D0"),
     ]
 
     var calories: Color { Color(hex: caloriesHex) }
