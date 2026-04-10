@@ -3,10 +3,10 @@ import Combine
 import WidgetKit
 
 class MacroColors: ObservableObject {
-    @AppStorage("macro_calories_hex") private var caloriesHex: String = "#5B9CF5"
-    @AppStorage("macro_protein_hex")  private var proteinHex: String  = "#6BDFB8"
-    @AppStorage("macro_carbs_hex")    private var carbsHex: String    = "#B07EFF"
-    @AppStorage("macro_fat_hex")      private var fatHex: String      = "#F4A261"
+    @AppStorage("macro_calories_hex") private var caloriesHex: String = "#A8D8F0"
+    @AppStorage("macro_protein_hex")  private var proteinHex: String  = "#B5E8A8"
+    @AppStorage("macro_carbs_hex")    private var carbsHex: String    = "#C8A8E9"
+    @AppStorage("macro_fat_hex")      private var fatHex: String      = "#FF9AA2"
 
     static let palette: [(name: String, hex: String)] = [
         ("Red",     "#FF9AA2"),
