@@ -9,22 +9,22 @@ class MacroColors: ObservableObject {
     @AppStorage("macro_fat_hex")      private var fatHex: String      = "#FF9AA2"
 
     static let palette: [(name: String, hex: String)] = [
-        ("Red",     "#FF9AA2"),
-        ("Coral",   "#FFB3A7"),
-        ("Orange",  "#FFCBA4"),
-        ("Peach",   "#FFDAB9"),
-        ("Amber",   "#FFE5A0"),
-        ("Yellow",  "#FFF4B3"),
-        ("Lime",    "#DCEDA1"),
-        ("Green",   "#B5E8A8"),
-        ("Mint",    "#A8E6CF"),
-        ("Teal",    "#A0E7E5"),
-        ("Sky",     "#A8D8F0"),
-        ("Blue",    "#A2C4F5"),
-        ("Indigo",  "#B5B5F0"),
-        ("Violet",  "#C8A8E9"),
-        ("Lavender","#D8BFD8"),
-        ("Pink",    "#F7B9D0"),
+        ("Red",      "#FF9AA2"),
+        ("Coral",    "#FFB3A7"),
+        ("Orange",   "#FFCBA4"),
+        ("Peach",    "#FFDAB9"),
+        ("Amber",    "#FFE5A0"),
+        ("Yellow",   "#FFF4B3"),
+        ("Lime",     "#DCEDA1"),
+        ("Green",    "#B5E8A8"),
+        ("Mint",     "#A8E6CF"),
+        ("Teal",     "#A0E7E5"),
+        ("Sky",      "#A8D8F0"),
+        ("Blue",     "#A2C4F5"),
+        ("Indigo",   "#B5B5F0"),
+        ("Violet",   "#C8A8E9"),
+        ("Lavender", "#D8BFD8"),
+        ("Pink",     "#F7B9D0"),
     ]
 
     var calories: Color { Color(hex: caloriesHex) }
@@ -50,6 +50,11 @@ class MacroColors: ObservableObject {
     }
 
     private func reloadWidget() {
-        WidgetCenter.shared.reloadTimelines(ofKind: "MacroWidget")
+        SharedDefaults.updateColors(
+            calories: calories,
+            protein: protein,
+            carbs: carbs,
+            fat: fat
+        )
     }
 }
