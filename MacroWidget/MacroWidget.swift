@@ -66,18 +66,47 @@ struct MacroTimelineProvider: TimelineProvider {
     }
 }
 
-// MARK: - Widget View
+// MARK: - Widget View (dispatches by family)
 struct MacroWidgetView: View {
+    @Environment(\.widgetFamily) private var family
     let entry: MacroEntry
 
-    private var s: MacroSnapshot { entry.snapshot }
-    private var calPct: CGFloat { s.calGoal > 0 ? min(CGFloat(s.calories / s.calGoal), 1) : 0 }
-    private var remaining: Int { Int(s.calGoal - s.calories) }
+    var body: some View {
+        Group {
+            switch family {
+            case .systemMedium:
+                MediumMacroWidgetView(entry: entry)
+            case .systemLarge:
+                LargeMacroWidgetView(entry: entry)
+            default:
+                SmallMacroWidgetView(entry: entry)
+            }
+        }
+        .widgetURL(URL(string: "macros://home"))
+    }
+}
 
-    private var caloriesColor: Color { Color(red: s.caloriesColorR, green: s.caloriesColorG, blue: s.caloriesColorB) }
-    private var proteinColor: Color { Color(red: s.proteinColorR, green: s.proteinColorG, blue: s.proteinColorB) }
-    private var carbsColor: Color { Color(red: s.carbsColorR, green: s.carbsColorG, blue: s.carbsColorB) }
-    private var fatColor: Color { Color(red: s.fatColorR, green: s.fatColorG, blue: s.fatColorB) }
+// MARK: - Shared color helpers
+private extension MacroSnapshot {
+    var caloriesColor: Color { Color(red: caloriesColorR, green: caloriesColorG, blue: caloriesColorB) }
+    var proteinColor: Color { Color(red: proteinColorR, green: proteinColorG, blue: proteinColorB) }
+    var carbsColor: Color { Color(red: carbsColorR, green: carbsColorG, blue: carbsColorB) }
+    var fatColor: Color { Color(red: fatColorR, green: fatColorG, blue: fatColorB) }
+
+    var calPct: CGFloat { calGoal > 0 ? min(CGFloat(calories / calGoal), 1) : 0 }
+    var remaining: Int { Int(calGoal - calories) }
+
+    var calorieRingColor: Color {
+        let over = calories - calGoal
+        if over >= 100 { return Color(red: 1.0, green: 0.35, blue: 0.35) }
+        return caloriesColor
+    }
+}
+
+// MARK: - Small widget (2x2)
+struct SmallMacroWidgetView: View {
+    let entry: MacroEntry
+    private var s: MacroSnapshot { entry.snapshot }
 
     var body: some View {
         VStack(spacing: 0) {
@@ -88,21 +117,21 @@ struct MacroWidgetView: View {
                     .stroke(Color.white.opacity(0.08), lineWidth: 6)
 
                 Circle()
-                    .trim(from: 0, to: calPct)
+                    .trim(from: 0, to: s.calPct)
                     .stroke(
-                        ringColor,
+                        s.calorieRingColor,
                         style: StrokeStyle(lineWidth: 6, lineCap: .round)
                     )
                     .rotationEffect(.degrees(-90))
 
                 VStack(spacing: 1) {
-                    Text("\(abs(remaining))")
+                    Text("\(abs(s.remaining))")
                         .font(.system(size: 30, weight: .bold, design: .rounded))
                         .foregroundColor(.white)
                         .minimumScaleFactor(0.5)
                         .lineLimit(1)
 
-                    Text(remaining >= 0 ? "left" : "over")
+                    Text(s.remaining >= 0 ? "left" : "over")
                         .font(.system(size: 10, weight: .medium))
                         .foregroundColor(.white.opacity(0.4))
                 }
@@ -112,22 +141,113 @@ struct MacroWidgetView: View {
             Spacer()
 
             HStack(spacing: 8) {
-                MacroMiniBar(label: "P", value: s.protein, goal: s.proteinGoal, color: proteinColor)
-                MacroMiniBar(label: "C", value: s.carbs, goal: s.carbGoal, color: carbsColor)
-                MacroMiniBar(label: "F", value: s.fat, goal: s.fatGoal, color: fatColor)
+                MacroMiniBar(label: "P", value: s.protein, goal: s.proteinGoal, color: s.proteinColor)
+                MacroMiniBar(label: "C", value: s.carbs, goal: s.carbGoal, color: s.carbsColor)
+                MacroMiniBar(label: "F", value: s.fat, goal: s.fatGoal, color: s.fatColor)
             }
             .padding(.horizontal, 14)
             .padding(.bottom, 12)
         }
-        .widgetURL(URL(string: "macros://home"))
     }
+}
 
-    private var ringColor: Color {
-        let over = s.calories - s.calGoal
-        if over >= 100 {
-            return Color(red: 1.0, green: 0.35, blue: 0.35)
+// MARK: - Medium widget (4x2): ring on the left, detailed bars on the right
+struct MediumMacroWidgetView: View {
+    let entry: MacroEntry
+    private var s: MacroSnapshot { entry.snapshot }
+
+    var body: some View {
+        HStack(spacing: 18) {
+            VStack(spacing: 6) {
+                ZStack {
+                    Circle()
+                        .stroke(Color.white.opacity(0.08), lineWidth: 7)
+
+                    Circle()
+                        .trim(from: 0, to: s.calPct)
+                        .stroke(
+                            s.calorieRingColor,
+                            style: StrokeStyle(lineWidth: 7, lineCap: .round)
+                        )
+                        .rotationEffect(.degrees(-90))
+
+                    VStack(spacing: 1) {
+                        Text("\(abs(s.remaining))")
+                            .font(.system(size: 28, weight: .bold, design: .rounded))
+                            .foregroundColor(.white)
+                            .minimumScaleFactor(0.5)
+                            .lineLimit(1)
+
+                        Text(s.remaining >= 0 ? "left" : "over")
+                            .font(.system(size: 10, weight: .medium))
+                            .foregroundColor(.white.opacity(0.4))
+                    }
+                }
+                .frame(width: 116, height: 116)
+
+                Text("\(Int(s.calories)) / \(Int(s.calGoal)) cal")
+                    .font(.system(size: 9, weight: .medium, design: .monospaced))
+                    .foregroundColor(.white.opacity(0.35))
+            }
+
+            VStack(spacing: 10) {
+                MacroDetailRow(label: "Protein", value: s.protein, goal: s.proteinGoal, color: s.proteinColor)
+                MacroDetailRow(label: "Carbs", value: s.carbs, goal: s.carbGoal, color: s.carbsColor)
+                MacroDetailRow(label: "Fat", value: s.fat, goal: s.fatGoal, color: s.fatColor)
+            }
+            .frame(maxWidth: .infinity, alignment: .leading)
         }
-        return caloriesColor
+        .padding(.horizontal, 18)
+        .padding(.vertical, 16)
+    }
+}
+
+// MARK: - Large widget (4x4): centered ring + 4-cell detail grid
+struct LargeMacroWidgetView: View {
+    let entry: MacroEntry
+    private var s: MacroSnapshot { entry.snapshot }
+
+    var body: some View {
+        VStack(spacing: 18) {
+            ZStack {
+                Circle()
+                    .stroke(Color.white.opacity(0.08), lineWidth: 9)
+
+                Circle()
+                    .trim(from: 0, to: s.calPct)
+                    .stroke(
+                        s.calorieRingColor,
+                        style: StrokeStyle(lineWidth: 9, lineCap: .round)
+                    )
+                    .rotationEffect(.degrees(-90))
+
+                VStack(spacing: 2) {
+                    Text("\(abs(s.remaining))")
+                        .font(.system(size: 48, weight: .bold, design: .rounded))
+                        .foregroundColor(.white)
+                        .minimumScaleFactor(0.5)
+                        .lineLimit(1)
+
+                    Text(s.remaining >= 0 ? "calories left" : "calories over")
+                        .font(.system(size: 11, weight: .medium))
+                        .foregroundColor(.white.opacity(0.4))
+
+                    Text("\(Int(s.calories)) / \(Int(s.calGoal))")
+                        .font(.system(size: 10, weight: .medium, design: .monospaced))
+                        .foregroundColor(.white.opacity(0.3))
+                        .padding(.top, 2)
+                }
+            }
+            .frame(width: 168, height: 168)
+
+            VStack(spacing: 10) {
+                MacroDetailRow(label: "Protein", value: s.protein, goal: s.proteinGoal, color: s.proteinColor)
+                MacroDetailRow(label: "Carbs", value: s.carbs, goal: s.carbGoal, color: s.carbsColor)
+                MacroDetailRow(label: "Fat", value: s.fat, goal: s.fatGoal, color: s.fatColor)
+            }
+        }
+        .padding(.horizontal, 22)
+        .padding(.vertical, 22)
     }
 }
 
@@ -168,6 +288,50 @@ struct MacroMiniBar: View {
     }
 }
 
+// MARK: - Detailed macro row for medium / large widgets
+struct MacroDetailRow: View {
+    let label: String
+    let value: Float
+    let goal: Float
+    let color: Color
+
+    private var pct: CGFloat { goal > 0 ? min(CGFloat(value / goal), 1) : 0 }
+    private var remaining: Int { max(Int(goal - value), 0) }
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 4) {
+            HStack(alignment: .firstTextBaseline) {
+                Text(label.uppercased())
+                    .font(.system(size: 10, weight: .semibold))
+                    .tracking(0.6)
+                    .foregroundColor(.white.opacity(0.45))
+
+                Spacer()
+
+                HStack(spacing: 3) {
+                    Text("\(Int(value))")
+                        .font(.system(size: 13, weight: .semibold, design: .monospaced))
+                        .foregroundColor(color)
+                    Text("/ \(Int(goal))g")
+                        .font(.system(size: 10, weight: .medium, design: .monospaced))
+                        .foregroundColor(.white.opacity(0.3))
+                }
+            }
+
+            GeometryReader { geo in
+                ZStack(alignment: .leading) {
+                    Capsule()
+                        .fill(Color.white.opacity(0.08))
+                    Capsule()
+                        .fill(color.opacity(0.85))
+                        .frame(width: geo.size.width * pct)
+                }
+            }
+            .frame(height: 4)
+        }
+    }
+}
+
 // MARK: - Widget Configuration
 struct MacroWidget: Widget {
     let kind: String = "MacroWidget"
@@ -179,35 +343,38 @@ struct MacroWidget: Widget {
         }
         .configurationDisplayName("Daily Macros")
         .description("Track your calories, protein, carbs, and fat at a glance.")
-        .supportedFamilies([.systemSmall])
+        .supportedFamilies([.systemSmall, .systemMedium, .systemLarge])
         .contentMarginsDisabled()
     }
 }
 
-// MARK: - Preview
+// MARK: - Previews
+private let previewSnapshot = MacroSnapshot(
+    calories: 1450, calGoal: 2200,
+    protein: 120, proteinGoal: 160,
+    carbs: 180, carbGoal: 250,
+    fat: 45, fatGoal: 70,
+    lastUpdated: Date(),
+    caloriesColorR: 0.36, caloriesColorG: 0.61, caloriesColorB: 0.96,
+    proteinColorR: 0.42, proteinColorG: 0.87, proteinColorB: 0.72,
+    carbsColorR: 0.69, carbsColorG: 0.49, carbsColorB: 1.0,
+    fatColorR: 0.96, fatColorG: 0.64, fatColorB: 0.38
+)
+
 #Preview(as: .systemSmall) {
     MacroWidget()
 } timeline: {
-    MacroEntry(date: Date(), snapshot: MacroSnapshot(
-        calories: 1450, calGoal: 2200,
-        protein: 120, proteinGoal: 160,
-        carbs: 180, carbGoal: 250,
-        fat: 45, fatGoal: 70,
-        lastUpdated: Date(),
-        caloriesColorR: 0.36, caloriesColorG: 0.61, caloriesColorB: 0.96,
-        proteinColorR: 0.42, proteinColorG: 0.87, proteinColorB: 0.72,
-        carbsColorR: 0.69, carbsColorG: 0.49, carbsColorB: 1.0,
-        fatColorR: 0.96, fatColorG: 0.64, fatColorB: 0.38
-    ))
-    MacroEntry(date: Date(), snapshot: MacroSnapshot(
-        calories: 2400, calGoal: 2200,
-        protein: 160, proteinGoal: 160,
-        carbs: 250, carbGoal: 250,
-        fat: 70, fatGoal: 70,
-        lastUpdated: Date(),
-        caloriesColorR: 0.36, caloriesColorG: 0.61, caloriesColorB: 0.96,
-        proteinColorR: 0.42, proteinColorG: 0.87, proteinColorB: 0.72,
-        carbsColorR: 0.69, carbsColorG: 0.49, carbsColorB: 1.0,
-        fatColorR: 0.96, fatColorG: 0.64, fatColorB: 0.38
-    ))
+    MacroEntry(date: Date(), snapshot: previewSnapshot)
+}
+
+#Preview(as: .systemMedium) {
+    MacroWidget()
+} timeline: {
+    MacroEntry(date: Date(), snapshot: previewSnapshot)
+}
+
+#Preview(as: .systemLarge) {
+    MacroWidget()
+} timeline: {
+    MacroEntry(date: Date(), snapshot: previewSnapshot)
 }
