@@ -14,10 +14,16 @@ struct OrderUpdate: Encodable {
     }
 }
 
+private struct LoggedFoodIdRow: Decodable {
+    let foodId: UUID?
+    enum CodingKeys: String, CodingKey { case foodId = "food_id" }
+}
+
 final class LogService: ObservableObject {
     @Published var todayEntries: [FoodLogEntry] = []
     @Published var summary: DailySummary?
     @Published var isLoading = false
+    @Published var loggedFoodIds: Set<UUID> = []
 
     private let dateFormatter: DateFormatter = {
         let f = DateFormatter()
@@ -111,6 +117,22 @@ final class LogService: ObservableObject {
         await loadEntries(userId: userId, date: Date())
     }
 
+    // MARK: - Load distinct food_ids the user has ever logged
+    @MainActor
+    func loadLoggedFoodIds(userId: UUID) async {
+        do {
+            let rows: [LoggedFoodIdRow] = try await supabase
+                .from("food_log")
+                .select("food_id")
+                .eq("user_id", value: userId.uuidString)
+                .execute()
+                .value
+            self.loggedFoodIds = Set(rows.compactMap { $0.foodId })
+        } catch {
+            print("Load logged food ids error: \(error)")
+        }
+    }
+
     // MARK: - Add entry
     @MainActor
     func addEntry(userId: UUID, food: Food, grams: Float, mealIndex: Int = 0, date: Date = Date()) async {
@@ -166,6 +188,7 @@ final class LogService: ObservableObject {
             if let idx = todayEntries.firstIndex(where: { $0.id == tempId }) {
                 todayEntries[idx] = entry
             }
+            loggedFoodIds.insert(food.id)
 
             Task {
                 await updateStreak(logDate: dateString(for: date))

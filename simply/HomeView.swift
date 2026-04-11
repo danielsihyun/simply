@@ -196,6 +196,7 @@ struct HomeView: View {
             if let userId = authService.userId {
                 await authService.loadProfile()
                 await logService.loadEntries(userId: userId, date: selectedDate)
+                await logService.loadLoggedFoodIds(userId: userId)
                 currentMealIndex = logService.todayEntries.map(\.mealIndex).max() ?? 0
                 logService.pushToWidget(profile: authService.profile, macroColors: macroColors)
             }
@@ -696,7 +697,7 @@ struct HomeView: View {
                 let canCreate = !foodService.isSearching && trimmedQuery.count >= 2
                 if !foodService.searchResults.isEmpty {
                     SuggestionDropdown(
-                        suggestions: foodService.searchResults,
+                        suggestions: sortedSearchResults,
                         createQuery: canCreate ? trimmedQuery : nil,
                         onSelect: { food in
                             selectFood(food)
@@ -737,6 +738,19 @@ struct HomeView: View {
             }
         }
         .padding(.top, 4)
+    }
+
+    private var sortedSearchResults: [Food] {
+        let logged = logService.loggedFoodIds
+        guard !logged.isEmpty else { return foodService.searchResults }
+        return foodService.searchResults.enumerated()
+            .sorted { lhs, rhs in
+                let l = logged.contains(lhs.element.id)
+                let r = logged.contains(rhs.element.id)
+                if l != r { return l && !r }
+                return lhs.offset < rhs.offset
+            }
+            .map { $0.element }
     }
 
     private var currentPlaceholder: String {
@@ -951,7 +965,7 @@ struct HomeView: View {
                 lastWasEnter = true
             }
         } else {
-            if let first = foodService.searchResults.first {
+            if let first = sortedSearchResults.first {
                 selectFood(first)
             } else if !foodService.isSearching && visibleInput.trimmingCharacters(in: .whitespaces).count >= 2 {
                 startCustomFood()
