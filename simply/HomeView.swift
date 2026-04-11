@@ -692,14 +692,20 @@ struct HomeView: View {
             }
 
             if mode == .search && !visibleInput.isEmpty {
+                let trimmedQuery = visibleInput.trimmingCharacters(in: .whitespaces)
+                let canCreate = !foodService.isSearching && trimmedQuery.count >= 2
                 if !foodService.searchResults.isEmpty {
                     SuggestionDropdown(
                         suggestions: foodService.searchResults,
+                        createQuery: canCreate ? trimmedQuery : nil,
                         onSelect: { food in
                             selectFood(food)
+                        },
+                        onCreate: {
+                            startCustomFood()
                         }
                     )
-                } else if !foodService.isSearching && visibleInput.trimmingCharacters(in: .whitespaces).count >= 2 {
+                } else if canCreate {
                     Button {
                         startCustomFood()
                     } label: {
@@ -708,7 +714,7 @@ struct HomeView: View {
                                 .font(.system(size: 14))
                                 .foregroundColor(.calBarBlue.opacity(0.6))
 
-                            Text("Add \"\(visibleInput.trimmingCharacters(in: .whitespaces))\" as custom food")
+                            Text("Add \"\(trimmedQuery)\" as custom food")
                                 .font(.system(size: 14))
                                 .foregroundColor(.textPrimary)
 
@@ -1402,7 +1408,9 @@ struct SuggestionDropdown: View {
     @EnvironmentObject var macroColors: MacroColors
 
     let suggestions: [Food]
+    let createQuery: String?
     let onSelect: (Food) -> Void
+    let onCreate: () -> Void
 
     var body: some View {
         VStack(spacing: 0) {
@@ -1442,10 +1450,28 @@ struct SuggestionDropdown: View {
                     .padding(.vertical, 9)
                 }
 
-                if food.id != suggestions.prefix(8).last?.id {
-                    Rectangle()
-                        .fill(Color.white.opacity(0.04))
-                        .frame(height: 1)
+                Rectangle()
+                    .fill(Color.white.opacity(0.04))
+                    .frame(height: 1)
+            }
+
+            if let query = createQuery {
+                Button {
+                    onCreate()
+                } label: {
+                    HStack {
+                        Image(systemName: "plus.circle.fill")
+                            .font(.system(size: 13))
+                            .foregroundColor(.calBarBlue.opacity(0.6))
+
+                        Text("Add \"\(query)\" as custom food")
+                            .font(.system(size: 14))
+                            .foregroundColor(.textPrimary)
+
+                        Spacer()
+                    }
+                    .padding(.horizontal, 16)
+                    .padding(.vertical, 10)
                 }
             }
         }
