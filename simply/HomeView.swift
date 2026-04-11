@@ -161,6 +161,8 @@ struct HomeView: View {
                                 .padding(.bottom, 24)
 
                                 mealEntriesView
+
+                                inputAreaView
                             }
                             .id(selectedDate)
                             .transition(.asymmetric(
@@ -168,8 +170,6 @@ struct HomeView: View {
                                 removal: .move(edge: slideDirection)
                             ))
                             .animation(.easeInOut(duration: 0.3), value: selectedDate)
-
-                            inputAreaView
 
                             Spacer().frame(height: 120)
                                 .id("bottom")
