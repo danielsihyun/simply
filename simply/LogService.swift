@@ -271,6 +271,60 @@ final class LogService: ObservableObject {
         }
     }
 
+    // MARK: - Delete an entire meal and shift later meals down by one
+    @MainActor
+    func deleteMeal(userId: UUID, date: Date, mealIndex: Int) async {
+        let dateStr = dateString(for: date)
+
+        let originalEntries = todayEntries
+        todayEntries = todayEntries.compactMap { entry in
+            if entry.mealIndex == mealIndex { return nil }
+            if entry.mealIndex > mealIndex {
+                return FoodLogEntry(
+                    id: entry.id,
+                    userId: entry.userId,
+                    logDate: entry.logDate,
+                    mealIndex: entry.mealIndex - 1,
+                    sortOrder: entry.sortOrder,
+                    foodId: entry.foodId,
+                    customFoodId: entry.customFoodId,
+                    foodName: entry.foodName,
+                    grams: entry.grams,
+                    calories: entry.calories,
+                    protein: entry.protein,
+                    carbs: entry.carbs,
+                    fat: entry.fat,
+                    isCount: entry.isCount
+                )
+            }
+            return entry
+        }
+
+        do {
+            try await supabase
+                .from("food_log")
+                .delete()
+                .eq("user_id", value: userId.uuidString)
+                .eq("log_date", value: dateStr)
+                .eq("meal_index", value: mealIndex)
+                .execute()
+
+            let toShift = originalEntries.filter { $0.mealIndex > mealIndex }
+            for entry in toShift {
+                guard let id = entry.id else { continue }
+                let update = OrderUpdate(mealIndex: entry.mealIndex - 1, sortOrder: entry.sortOrder)
+                _ = try await supabase
+                    .from("food_log")
+                    .update(update)
+                    .eq("id", value: id.uuidString)
+                    .execute()
+            }
+        } catch {
+            todayEntries = originalEntries
+            print("Delete meal error: \(error)")
+        }
+    }
+
     // MARK: - Update streak via Postgres function
     private func updateStreak(logDate: String) async {
         do {

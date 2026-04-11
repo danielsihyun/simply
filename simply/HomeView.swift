@@ -161,7 +161,6 @@ struct HomeView: View {
                                 .padding(.bottom, 24)
 
                                 mealEntriesView
-
                                 inputAreaView
                             }
                             .id(selectedDate)
@@ -170,6 +169,7 @@ struct HomeView: View {
                                 removal: .move(edge: slideDirection)
                             ))
                             .animation(.easeInOut(duration: 0.3), value: selectedDate)
+
 
                             Spacer().frame(height: 120)
                                 .id("bottom")
@@ -372,7 +372,7 @@ struct HomeView: View {
 
     // MARK: - Meal header (unified to prevent layout shift)
     @ViewBuilder
-    private func mealHeader(index: Int, calories: Float, showCopy: Bool) -> some View {
+    private func mealHeader(index: Int, calories: Float, showCopy: Bool, onDelete: (() -> Void)? = nil) -> some View {
         HStack {
             Text("Meal \(index)")
                 .font(.labelMealHeader)
@@ -383,11 +383,22 @@ struct HomeView: View {
             Spacer()
 
             ZStack {
-                // Cal count — visible when meal has entries
-                Text("\(Int(calories)) cal")
-                    .font(.monoTiny)
-                    .foregroundColor(.textVeryMuted)
-                    .opacity(calories > 0 ? 1 : 0)
+                // Cal count + delete button — visible when meal has entries
+                HStack(spacing: 8) {
+                    Text("\(Int(calories)) cal")
+                        .font(.monoTiny)
+                        .foregroundColor(.textVeryMuted)
+
+                    if let onDelete {
+                        Button(action: onDelete) {
+                            Text("×")
+                                .font(.system(size: 15))
+                                .foregroundColor(.white.opacity(0.12))
+                        }
+                    }
+                }
+                .opacity(calories > 0 ? 1 : 0)
+                .allowsHitTesting(calories > 0)
 
                 // Copy button — visible when meal is empty and no pending
                 copyYesterdayButton
@@ -414,12 +425,26 @@ struct HomeView: View {
                 let isLastGroup = mealIdx == groups.count - 1
                 let pendingBelongsHere = hasPending && !pendingIsNewMeal && isLastGroup
                 let mealCal = group.reduce(0) { $0 + $1.calories }
+                let groupMealIndex = group.first?.mealIndex ?? mealIdx
 
                 VStack(alignment: .leading, spacing: 0) {
                     mealHeader(
                         index: mealIdx + 1,
                         calories: mealCal,
-                        showCopy: false
+                        showCopy: false,
+                        onDelete: {
+                            guard let userId = authService.userId else { return }
+                            let dateToDelete = selectedDate
+                            let indexToDelete = groupMealIndex
+                            Task {
+                                await logService.deleteMeal(userId: userId, date: dateToDelete, mealIndex: indexToDelete)
+                                if currentMealIndex >= indexToDelete && currentMealIndex > 0 {
+                                    currentMealIndex -= 1
+                                }
+                                await authService.loadProfile()
+                                logService.pushToWidget(profile: authService.profile, macroColors: macroColors)
+                            }
+                        }
                     )
 
                     ForEach(group) { entry in
