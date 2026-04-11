@@ -438,7 +438,7 @@ struct HomeView: View {
                             let indexToDelete = groupMealIndex
                             Task {
                                 await logService.deleteMeal(userId: userId, date: dateToDelete, mealIndex: indexToDelete)
-                                if currentMealIndex >= indexToDelete && currentMealIndex > 0 {
+                                if currentMealIndex > indexToDelete {
                                     currentMealIndex -= 1
                                 }
                                 await authService.loadProfile()
