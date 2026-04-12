@@ -42,7 +42,6 @@ struct HomeView: View {
     @State private var currentMealIndex = 0
     @State private var suppressUndo = false
     @State private var selectedDate = Date()
-    @State private var slideDirection: Edge = .trailing
     @State private var showSettings = false
     @State private var showScanner = false
     @State private var showAnalytics = false
@@ -57,6 +56,8 @@ struct HomeView: View {
     @State private var lastWasCustomBackspace = false
     @State private var isCopyingMeal = false
     @State private var editingEntryId: UUID? = nil
+    @State private var slideOffset: CGFloat = 0
+    @State private var isSliding = false
     @FocusState private var inputFocused: Bool
     @FocusState private var gramsFocused: Bool
 
@@ -150,28 +151,20 @@ struct HomeView: View {
                 ScrollViewReader { proxy in
                     ScrollView {
                         VStack(alignment: .leading, spacing: 0) {
-                            ZStack(alignment: .topLeading) {
-                                VStack(alignment: .leading, spacing: 0) {
-                                    DaySummaryView(
-                                        cal: logService.totalCalories,
-                                        protein: logService.totalProtein,
-                                        carbs: logService.totalCarbs,
-                                        fat: logService.totalFat,
-                                        profile: authService.profile
-                                    )
-                                    .padding(.bottom, 24)
+                            VStack(alignment: .leading, spacing: 0) {
+                                DaySummaryView(
+                                    cal: logService.totalCalories,
+                                    protein: logService.totalProtein,
+                                    carbs: logService.totalCarbs,
+                                    fat: logService.totalFat,
+                                    profile: authService.profile
+                                )
+                                .padding(.bottom, 24)
 
-                                    mealEntriesView
-                                    inputAreaView
-                                }
-                                .frame(maxWidth: .infinity, alignment: .topLeading)
-                                .id(selectedDate)
-                                .transition(.asymmetric(
-                                    insertion: .move(edge: slideDirection == .trailing ? .leading : .trailing),
-                                    removal: .move(edge: slideDirection)
-                                ))
+                                mealEntriesView
+                                inputAreaView
                             }
-                            .animation(.easeInOut(duration: 0.3), value: selectedDate)
+                            .offset(x: slideOffset)
                             .clipped()
 
                             Spacer().frame(height: 120)
@@ -838,8 +831,8 @@ struct HomeView: View {
 
     // MARK: - Date Navigation
     private func navigateToDate(_ newDate: Date, direction: Edge) {
-        guard let userId = authService.userId else { return }
-        slideDirection = direction
+        guard let userId = authService.userId, !isSliding else { return }
+        isSliding = true
 
         inputText = Self.sentinel
         mode = .search
@@ -853,31 +846,42 @@ struct HomeView: View {
         pendingBarcode = nil
         editingEntryId = nil
 
-        // Start the slide and refocus on the very next frame — don't wait for the network.
-        // Entries backfill once the slide finishes; updating mid-slide would repaint the
-        // outgoing subtree (which is still in the view tree) with the *new* day's data,
-        // making it look like content slides onto the screen from the wrong direction.
-        logService.todayEntries = []
-        currentMealIndex = 0
-        selectedDate = newDate
-        inputFocused = true
+        let screenWidth = UIScreen.main.bounds.width
+        let exitOffset: CGFloat = direction == .trailing ? screenWidth : -screenWidth
+        let phaseDuration: TimeInterval = 0.15
 
-        let targetDateString = logService.dateString(for: newDate)
-        let slideStart = Date()
-        let slideDuration: TimeInterval = 0.3
-        Task {
-            let entries = await logService.preloadEntries(userId: userId, date: newDate)
-            // Hold the update until the slide is fully past — prevents the outgoing view
-            // from re-rendering with the incoming day's entries while it's animating out.
-            let elapsed = Date().timeIntervalSince(slideStart)
-            if elapsed < slideDuration {
-                try? await Task.sleep(nanoseconds: UInt64((slideDuration - elapsed) * 1_000_000_000))
+        // Phase 1: slide current content off-screen
+        withAnimation(.easeIn(duration: phaseDuration)) {
+            slideOffset = exitOffset
+        }
+
+        // Phase 2: at the midpoint, swap content and slide in from the opposite side
+        DispatchQueue.main.asyncAfter(deadline: .now() + phaseDuration) {
+            logService.todayEntries = []
+            currentMealIndex = 0
+            selectedDate = newDate
+            slideOffset = -exitOffset
+
+            withAnimation(.easeOut(duration: phaseDuration)) {
+                slideOffset = 0
             }
-            // Drop stale results if the user swiped again before this returned.
-            guard logService.dateString(for: selectedDate) == targetDateString else { return }
-            logService.todayEntries = entries
-            currentMealIndex = entries.map(\.mealIndex).max() ?? 0
-            logService.pushToWidget(profile: authService.profile, macroColors: macroColors)
+
+            inputFocused = true
+
+            // Fetch entries in parallel — arrives after the slide-in is already visible
+            let targetDateString = logService.dateString(for: newDate)
+            Task {
+                let entries = await logService.preloadEntries(userId: userId, date: newDate)
+                guard logService.dateString(for: selectedDate) == targetDateString else { return }
+                logService.todayEntries = entries
+                currentMealIndex = entries.map(\.mealIndex).max() ?? 0
+                logService.pushToWidget(profile: authService.profile, macroColors: macroColors)
+            }
+
+            // Unlock swiping after the slide-in animation completes
+            DispatchQueue.main.asyncAfter(deadline: .now() + phaseDuration + 0.05) {
+                isSliding = false
+            }
         }
     }
 
