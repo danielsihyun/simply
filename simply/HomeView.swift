@@ -58,6 +58,7 @@ struct HomeView: View {
     @State private var editingEntryId: UUID? = nil
     @State private var slideOffset: CGFloat = 0
     @State private var isSliding = false
+    @State private var containerWidth: CGFloat = 400
     @FocusState private var inputFocused: Bool
     @FocusState private var gramsFocused: Bool
 
@@ -173,6 +174,11 @@ struct HomeView: View {
                         .padding(.horizontal, 18)
                     }
                     .scrollDismissesKeyboard(.interactively)
+                    .onGeometryChange(for: CGFloat.self) { proxy in
+                        proxy.size.width
+                    } action: { newWidth in
+                        if newWidth > 0 { containerWidth = newWidth }
+                    }
                 }
             }
         }
@@ -846,8 +852,7 @@ struct HomeView: View {
         pendingBarcode = nil
         editingEntryId = nil
 
-        let screenWidth = UIScreen.main.bounds.width
-        let exitOffset: CGFloat = direction == .trailing ? screenWidth : -screenWidth
+        let exitOffset: CGFloat = direction == .trailing ? containerWidth : -containerWidth
         let phaseDuration: TimeInterval = 0.15
 
         // Phase 1: slide current content off-screen
