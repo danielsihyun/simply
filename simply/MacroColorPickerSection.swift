@@ -35,33 +35,13 @@ struct MacroColorPickerSection: View {
 
             if let target = editing {
                 let selectedHex = hexFor(target)
+                let half = (MacroColors.palette.count + 1) / 2
+                let row1 = Array(MacroColors.palette.prefix(half))
+                let row2 = Array(MacroColors.palette.suffix(MacroColors.palette.count - half))
 
-                ScrollView(.horizontal, showsIndicators: false) {
-                    HStack(spacing: 10) {
-                        ForEach(MacroColors.palette, id: \.hex) { swatch in
-                            let isSelected = swatch.hex.lowercased() == selectedHex.lowercased()
-                            Circle()
-                                .fill(Color(hex: swatch.hex))
-                                .frame(width: 24, height: 24)
-                                .overlay(
-                                    Circle()
-                                        .stroke(Color.white, lineWidth: isSelected ? 2 : 0)
-                                )
-                                .overlay(
-                                    isSelected
-                                        ? Image(systemName: "checkmark")
-                                            .font(.system(size: 8, weight: .bold))
-                                            .foregroundColor(.white)
-                                        : nil
-                                )
-                                .scaleEffect(isSelected ? 1.1 : 1.0)
-                                .animation(.easeOut(duration: 0.15), value: isSelected)
-                                .onTapGesture {
-                                    setHex(swatch.hex, for: target)
-                                }
-                        }
-                    }
-                    .padding(.vertical, 2)
+                VStack(spacing: 10) {
+                    swatchRow(row1, selectedHex: selectedHex, target: target)
+                    swatchRow(row2, selectedHex: selectedHex, target: target)
                 }
                 .padding(.top, 14)
                 .transition(.opacity.combined(with: .move(edge: .top)))
@@ -72,6 +52,35 @@ struct MacroColorPickerSection: View {
         .background(Color.bgCard)
         .cornerRadius(14)
         .animation(.easeOut(duration: 0.2), value: editing)
+    }
+
+    @ViewBuilder
+    private func swatchRow(_ swatches: [(name: String, hex: String)], selectedHex: String, target: MacroTarget) -> some View {
+        HStack(spacing: 10) {
+            ForEach(swatches, id: \.hex) { swatch in
+                let isSelected = swatch.hex.lowercased() == selectedHex.lowercased()
+                Circle()
+                    .fill(Color(hex: swatch.hex))
+                    .frame(width: 24, height: 24)
+                    .overlay(
+                        Circle()
+                            .stroke(Color.white, lineWidth: isSelected ? 2 : 0)
+                    )
+                    .overlay(
+                        isSelected
+                            ? Image(systemName: "checkmark")
+                                .font(.system(size: 8, weight: .bold))
+                                .foregroundColor(.white)
+                            : nil
+                    )
+                    .scaleEffect(isSelected ? 1.1 : 1.0)
+                    .animation(.easeOut(duration: 0.15), value: isSelected)
+                    .onTapGesture {
+                        setHex(swatch.hex, for: target)
+                    }
+            }
+            Spacer(minLength: 0)
+        }
     }
 
     private func colorCircle(label: String, target: MacroTarget, hex: String) -> some View {
