@@ -868,6 +868,9 @@ struct HomeView: View {
             slideOffset = exitOffset
         }
 
+        let cal = Calendar.current
+        let isLiveDay = cal.isDateInToday(newDate) || cal.isDateInTomorrow(newDate)
+
         // Phase 2: at the midpoint, swap content and slide in from the opposite side
         DispatchQueue.main.asyncAfter(deadline: .now() + phaseDuration) {
             logService.todayEntries = []
@@ -875,13 +878,9 @@ struct HomeView: View {
             selectedDate = newDate
             slideOffset = -exitOffset
 
-            // Past days reset to top; today/tomorrow scroll to the input area so the
-            // user can start typing immediately. Runs while content is off-screen so
-            // the scroll jump is invisible.
-            let cal = Calendar.current
-            if cal.isDateInToday(newDate) || cal.isDateInTomorrow(newDate) {
-                scrollAnchor = "input"
-            } else {
+            // Reset to top immediately for past days — "top" is a stable anchor, so this
+            // works regardless of whether entries have loaded yet.
+            if !isLiveDay {
                 scrollAnchor = "top"
             }
 
@@ -889,7 +888,8 @@ struct HomeView: View {
                 slideOffset = 0
             }
 
-            inputFocused = true
+            // Keyboard only comes up for today/tomorrow; past days are read-only browsing.
+            inputFocused = isLiveDay
 
             // Fetch entries in parallel — arrives after the slide-in is already visible
             let targetDateString = logService.dateString(for: newDate)
@@ -899,6 +899,14 @@ struct HomeView: View {
                 logService.todayEntries = entries
                 currentMealIndex = entries.map(\.mealIndex).max() ?? 0
                 logService.pushToWidget(profile: authService.profile, macroColors: macroColors)
+
+                // Scroll to input AFTER entries are laid out — otherwise the ScrollView
+                // has nothing below the input to scroll past, and scrollTo is a no-op.
+                if isLiveDay {
+                    DispatchQueue.main.async {
+                        scrollAnchor = "input"
+                    }
+                }
             }
 
             // Unlock swiping after the slide-in animation completes
