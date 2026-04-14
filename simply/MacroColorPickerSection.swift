@@ -79,8 +79,8 @@ struct MacroColorPickerSection: View {
                         setHex(swatch.hex, for: target)
                     }
             }
-            Spacer(minLength: 0)
         }
+        .frame(maxWidth: .infinity)
     }
 
     private func colorCircle(label: String, target: MacroTarget, hex: String) -> some View {
