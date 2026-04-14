@@ -21,8 +21,6 @@ private struct LoggedFoodIdRow: Decodable {
 
 final class LogService: ObservableObject {
     @Published var todayEntries: [FoodLogEntry] = []
-    @Published var summary: DailySummary?
-    @Published var isLoading = false
     @Published var loggedFoodIds: Set<UUID> = []
 
     private let dateFormatter: DateFormatter = {
@@ -30,10 +28,6 @@ final class LogService: ObservableObject {
         f.dateFormat = "yyyy-MM-dd"
         return f
     }()
-
-    var today: String {
-        dateFormatter.string(from: Date())
-    }
 
     func dateString(for date: Date) -> String {
         dateFormatter.string(from: date)
@@ -92,7 +86,6 @@ final class LogService: ObservableObject {
     // MARK: - Load entries for a date
     @MainActor
     func loadEntries(userId: UUID, date: Date) async {
-        isLoading = true
         do {
             let entries: [FoodLogEntry] = try await supabase
                 .from("food_log")
@@ -108,13 +101,6 @@ final class LogService: ObservableObject {
         } catch {
             print("Load entries error: \(error)")
         }
-        isLoading = false
-    }
-
-    // MARK: - Load today's entries
-    @MainActor
-    func loadToday(userId: UUID) async {
-        await loadEntries(userId: userId, date: Date())
     }
 
     // MARK: - Load distinct food_ids the user has ever logged

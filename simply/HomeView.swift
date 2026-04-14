@@ -1,5 +1,4 @@
 import SwiftUI
-import Combine
 
 // MARK: - Settings Button (standalone Liquid Glass)
 struct SettingsButton: View {
@@ -40,7 +39,6 @@ struct HomeView: View {
     @State private var lastWasEnter = false
     @State private var lastWasBackspace = false
     @State private var currentMealIndex = 0
-    @State private var suppressUndo = false
     @State private var selectedDate = Date()
     @State private var showSettings = false
     @State private var showScanner = false
@@ -610,14 +608,12 @@ struct HomeView: View {
 
                         if mode == .search && newValue.isEmpty && oldValue == Self.sentinel {
                             handleBackspace()
-                            suppressUndo = true
                             inputText = Self.sentinel
                             return
                         }
 
                         if mode == .custom && newValue.isEmpty && oldValue == Self.sentinel {
                             handleCustomBackspace()
-                            suppressUndo = true
                             inputText = Self.sentinel
                             return
                         }
@@ -626,18 +622,15 @@ struct HomeView: View {
                             foodService.search(query: newVisible)
 
                             if newVisible.isEmpty && !oldVisible.isEmpty && newValue != Self.sentinel {
-                                suppressUndo = true
                                 inputText = Self.sentinel
                                 return
                             }
                         }
 
                         if mode == .custom && newVisible.isEmpty && !oldVisible.isEmpty && newValue != Self.sentinel {
-                            suppressUndo = true
                             inputText = Self.sentinel
                             return
                         }
-                        suppressUndo = false
                         if !newVisible.isEmpty && newValue.contains(Self.sentinel) {
                             inputText = newVisible
                             return
@@ -856,7 +849,6 @@ struct HomeView: View {
         customIsCount = false
         lastWasEnter = false
         lastWasBackspace = false
-        suppressUndo = true
         pendingBarcode = nil
         editingEntryId = nil
 
@@ -1019,7 +1011,6 @@ struct HomeView: View {
     private func cancelPending() {
         pendingFood = nil
         mode = .search
-        suppressUndo = true
         inputText = Self.sentinel
         pendingBarcode = nil
         DispatchQueue.main.async {
@@ -1129,7 +1120,6 @@ struct HomeView: View {
 
         pendingFood = nil
         mode = .search
-        suppressUndo = true
         inputText = Self.sentinel
         lastWasEnter = false
         lastWasBackspace = false
@@ -1150,7 +1140,6 @@ struct HomeView: View {
         customProtein = 0
         customCarbs = 0
         mode = .custom
-        suppressUndo = true
         lastWasCustomBackspace = false
         inputText = Self.sentinel
         foodService.clearSearch()
@@ -1162,7 +1151,6 @@ struct HomeView: View {
         customFoodName = ""
         customStep = .serving
         customIsCount = false
-        suppressUndo = true
         lastWasCustomBackspace = false
         inputText = Self.sentinel
         pendingBarcode = nil
@@ -1185,7 +1173,6 @@ struct HomeView: View {
 
         if let next = customStep.next {
             customStep = next
-            suppressUndo = true
             lastWasCustomBackspace = false
             inputText = Self.sentinel
             inputFocused = true
@@ -1209,7 +1196,6 @@ struct HomeView: View {
         customFoodName = ""
         customStep = .serving
         customIsCount = false
-        suppressUndo = true
         inputText = Self.sentinel
         lastWasEnter = false
         pendingBarcode = nil

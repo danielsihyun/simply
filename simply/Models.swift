@@ -192,40 +192,6 @@ struct FoodLogInsert: Codable {
     }
 }
 
-// MARK: - Daily Summary
-struct DailySummary: Codable {
-    let userId: UUID
-    let logDate: String
-    let totalCal: Float
-    let totalProtein: Float
-    let totalCarbs: Float
-    let totalFat: Float
-    let mealCount: Int
-    let entryCount: Int
-
-    enum CodingKeys: String, CodingKey {
-        case userId = "user_id"
-        case logDate = "log_date"
-        case totalCal = "total_cal"
-        case totalProtein = "total_protein"
-        case totalCarbs = "total_carbs"
-        case totalFat = "total_fat"
-        case mealCount = "meal_count"
-        case entryCount = "entry_count"
-    }
-}
-
-// MARK: - Position Update DTO (for drag-and-drop reordering)
-struct PositionUpdate: Encodable {
-    let mealIndex: Int
-    let sortOrder: Int
-
-    enum CodingKeys: String, CodingKey {
-        case mealIndex = "meal_index"
-        case sortOrder = "sort_order"
-    }
-}
-
 // MARK: - Custom Food Insert DTO
 struct CustomFoodInsert: Encodable {
     let externalId: String
