@@ -59,6 +59,7 @@ struct HomeView: View {
     @State private var slideOffset: CGFloat = 0
     @State private var isSliding = false
     @State private var containerWidth: CGFloat = 400
+    @State private var scrollAnchor: String? = nil
     @FocusState private var inputFocused: Bool
     @FocusState private var gramsFocused: Bool
 
@@ -161,9 +162,11 @@ struct HomeView: View {
                                     profile: authService.profile
                                 )
                                 .padding(.bottom, 24)
+                                .id("top")
 
                                 mealEntriesView
                                 inputAreaView
+                                    .id("input")
                             }
                             .offset(x: slideOffset)
                             .clipped()
@@ -174,10 +177,15 @@ struct HomeView: View {
                         .padding(.horizontal, 18)
                     }
                     .scrollDismissesKeyboard(.interactively)
-                    .onGeometryChange(for: CGFloat.self) { proxy in
-                        proxy.size.width
+                    .onGeometryChange(for: CGFloat.self) { geo in
+                        geo.size.width
                     } action: { newWidth in
                         if newWidth > 0 { containerWidth = newWidth }
+                    }
+                    .onChange(of: scrollAnchor) { _, anchor in
+                        guard let anchor else { return }
+                        proxy.scrollTo(anchor, anchor: anchor == "top" ? .top : .bottom)
+                        scrollAnchor = nil
                     }
                 }
             }
@@ -866,6 +874,16 @@ struct HomeView: View {
             currentMealIndex = 0
             selectedDate = newDate
             slideOffset = -exitOffset
+
+            // Past days reset to top; today/tomorrow scroll to the input area so the
+            // user can start typing immediately. Runs while content is off-screen so
+            // the scroll jump is invisible.
+            let cal = Calendar.current
+            if cal.isDateInToday(newDate) || cal.isDateInTomorrow(newDate) {
+                scrollAnchor = "input"
+            } else {
+                scrollAnchor = "top"
+            }
 
             withAnimation(.easeOut(duration: phaseDuration)) {
                 slideOffset = 0
