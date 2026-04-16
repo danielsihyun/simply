@@ -272,7 +272,7 @@ struct AnalyticsView: View {
 
     // MARK: - Macro Balance + Weekly Averages card
     private var macroBalanceCard: some View {
-        VStack(alignment: .leading, spacing: 14) {
+        VStack(alignment: .leading, spacing: 18) {
             Text("THIS WEEK")
                 .font(.system(size: 11, weight: .semibold))
                 .foregroundColor(.textMuted)
@@ -292,6 +292,7 @@ struct AnalyticsView: View {
                     statRow(label: "FAT", value: "\(Int(weekAvgFat))g", delta: fatDelta)
                 }
             }
+            .padding(.vertical, 10)
         }
         .padding(.horizontal, 16)
         .padding(.vertical, 14)
