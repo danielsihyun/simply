@@ -60,7 +60,7 @@ struct AnalyticsView: View {
                     macroBalanceCard
                 }
                 .padding(.horizontal, 18)
-                .padding(.bottom, 18)
+                .padding(.bottom, 20)
             }
         }
         .task {
@@ -94,7 +94,8 @@ struct AnalyticsView: View {
                     ProgressView()
                         .tint(.textMuted)
                 }
-                .frame(maxWidth: .infinity, maxHeight: .infinity)
+                .frame(maxWidth: .infinity)
+                .frame(height: 240)
             } else if chartEntries.isEmpty {
                 VStack(spacing: 6) {
                     Text("No data yet")
@@ -104,7 +105,8 @@ struct AnalyticsView: View {
                         .font(.system(size: 12))
                         .foregroundColor(.textVeryMuted)
                 }
-                .frame(maxWidth: .infinity, maxHeight: .infinity)
+                .frame(maxWidth: .infinity)
+                .frame(height: 240)
             } else {
                 Chart(chartEntries) { entry in
                     AreaMark(
@@ -146,12 +148,11 @@ struct AnalyticsView: View {
                     }
                 }
                 .chartLegend(.hidden)
-                .frame(maxHeight: .infinity)
+                .frame(height: 240)
             }
         }
         .padding(.horizontal, 16)
         .padding(.vertical, 14)
-        .frame(maxWidth: .infinity, maxHeight: .infinity)
         .background(Color.bgCard)
         .cornerRadius(14)
     }
@@ -273,20 +274,11 @@ struct AnalyticsView: View {
 
     // MARK: - Macro Balance + Weekly Averages card
     private var macroBalanceCard: some View {
-        VStack(alignment: .leading, spacing: 0) {
-            HStack {
-                Text("THIS WEEK")
-                    .font(.system(size: 11, weight: .semibold))
-                    .foregroundColor(.textMuted)
-                    .tracking(0.8)
-
-                Spacer()
-
-                Text("vs last week")
-                    .font(.system(size: 10))
-                    .foregroundColor(.textVeryMuted)
-            }
-            .padding(.bottom, 16)
+        VStack(alignment: .leading, spacing: 12) {
+            Text("THIS WEEK")
+                .font(.system(size: 11, weight: .semibold))
+                .foregroundColor(.textMuted)
+                .tracking(0.8)
 
             HStack(alignment: .center, spacing: 0) {
                 macroRing
@@ -318,29 +310,29 @@ struct AnalyticsView: View {
 
         return ZStack {
             Circle()
-                .stroke(Color.white.opacity(0.06), lineWidth: 14)
+                .stroke(Color.white.opacity(0.06), lineWidth: 12)
 
             Circle()
                 .trim(from: 0, to: CGFloat(proteinPct))
-                .stroke(macroColors.protein.opacity(0.85), style: StrokeStyle(lineWidth: 14, lineCap: .butt))
+                .stroke(macroColors.protein.opacity(0.85), style: StrokeStyle(lineWidth: 12, lineCap: .butt))
                 .rotationEffect(.degrees(-90))
 
             Circle()
                 .trim(from: CGFloat(proteinPct), to: CGFloat(proteinPct + carbsPct))
-                .stroke(macroColors.carbs.opacity(0.85), style: StrokeStyle(lineWidth: 14, lineCap: .butt))
+                .stroke(macroColors.carbs.opacity(0.85), style: StrokeStyle(lineWidth: 12, lineCap: .butt))
                 .rotationEffect(.degrees(-90))
 
             Circle()
                 .trim(from: CGFloat(proteinPct + carbsPct), to: CGFloat(proteinPct + carbsPct + fatPct))
-                .stroke(macroColors.fat.opacity(0.85), style: StrokeStyle(lineWidth: 14, lineCap: .butt))
+                .stroke(macroColors.fat.opacity(0.85), style: StrokeStyle(lineWidth: 12, lineCap: .butt))
                 .rotationEffect(.degrees(-90))
 
             VStack(spacing: 2) {
                 Text("\(Int(proteinPct * 100))/\(Int(carbsPct * 100))/\(Int(fatPct * 100))")
-                    .font(.system(size: 11, weight: .medium, design: .monospaced))
+                    .font(.system(size: 10, weight: .medium, design: .monospaced))
                     .foregroundColor(.white.opacity(0.7))
                 Text("P/C/F")
-                    .font(.system(size: 8))
+                    .font(.system(size: 7))
                     .foregroundColor(.textVeryMuted)
                     .tracking(0.5)
             }
