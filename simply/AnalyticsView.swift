@@ -95,7 +95,7 @@ struct AnalyticsView: View {
                         .tint(.textMuted)
                 }
                 .frame(maxWidth: .infinity)
-                .frame(height: 240)
+                .frame(height: 180)
             } else if chartEntries.isEmpty {
                 VStack(spacing: 6) {
                     Text("No data yet")
@@ -106,7 +106,7 @@ struct AnalyticsView: View {
                         .foregroundColor(.textVeryMuted)
                 }
                 .frame(maxWidth: .infinity)
-                .frame(height: 240)
+                .frame(height: 180)
             } else {
                 Chart(chartEntries) { entry in
                     AreaMark(
@@ -148,7 +148,7 @@ struct AnalyticsView: View {
                     }
                 }
                 .chartLegend(.hidden)
-                .frame(height: 240)
+                .frame(height: 180)
             }
         }
         .padding(.horizontal, 16)
@@ -282,7 +282,7 @@ struct AnalyticsView: View {
 
             HStack(alignment: .center, spacing: 0) {
                 macroRing
-                    .frame(width: 90, height: 90)
+                    .frame(width: 150, height: 150)
                     .padding(.leading, 8)
 
                 Spacer()
@@ -310,29 +310,29 @@ struct AnalyticsView: View {
 
         return ZStack {
             Circle()
-                .stroke(Color.white.opacity(0.06), lineWidth: 12)
+                .stroke(Color.white.opacity(0.06), lineWidth: 18)
 
             Circle()
                 .trim(from: 0, to: CGFloat(proteinPct))
-                .stroke(macroColors.protein.opacity(0.85), style: StrokeStyle(lineWidth: 12, lineCap: .butt))
+                .stroke(macroColors.protein.opacity(0.85), style: StrokeStyle(lineWidth: 18, lineCap: .butt))
                 .rotationEffect(.degrees(-90))
 
             Circle()
                 .trim(from: CGFloat(proteinPct), to: CGFloat(proteinPct + carbsPct))
-                .stroke(macroColors.carbs.opacity(0.85), style: StrokeStyle(lineWidth: 12, lineCap: .butt))
+                .stroke(macroColors.carbs.opacity(0.85), style: StrokeStyle(lineWidth: 18, lineCap: .butt))
                 .rotationEffect(.degrees(-90))
 
             Circle()
                 .trim(from: CGFloat(proteinPct + carbsPct), to: CGFloat(proteinPct + carbsPct + fatPct))
-                .stroke(macroColors.fat.opacity(0.85), style: StrokeStyle(lineWidth: 12, lineCap: .butt))
+                .stroke(macroColors.fat.opacity(0.85), style: StrokeStyle(lineWidth: 18, lineCap: .butt))
                 .rotationEffect(.degrees(-90))
 
-            VStack(spacing: 2) {
+            VStack(spacing: 3) {
                 Text("\(Int(proteinPct * 100))/\(Int(carbsPct * 100))/\(Int(fatPct * 100))")
-                    .font(.system(size: 10, weight: .medium, design: .monospaced))
+                    .font(.system(size: 14, weight: .medium, design: .monospaced))
                     .foregroundColor(.white.opacity(0.7))
                 Text("P/C/F")
-                    .font(.system(size: 7))
+                    .font(.system(size: 9))
                     .foregroundColor(.textVeryMuted)
                     .tracking(0.5)
             }
