@@ -291,17 +291,27 @@ struct AnalyticsView: View {
             }
             .padding(.bottom, 16)
 
-            HStack(alignment: .center, spacing: 18) {
+            HStack(alignment: .center, spacing: 0) {
                 macroRing
                     .frame(width: 110, height: 110)
 
+                Spacer()
+
                 VStack(alignment: .leading, spacing: 10) {
-                    statRow(label: "CALORIES", value: "\(Int(weekAvgCalories))", delta: caloriesDelta, deltaIsGood: caloriesDelta <= 0)
-                    statRow(label: "PROTEIN", value: "\(Int(weekAvgProtein))g", delta: proteinDelta, deltaIsGood: proteinDelta >= 0)
-                    statRow(label: "CARBS", value: "\(Int(weekAvgCarbs))g", delta: carbsDelta, deltaIsGood: nil)
-                    statRow(label: "FAT", value: "\(Int(weekAvgFat))g", delta: fatDelta, deltaIsGood: nil)
+                    statRow(label: "CALORIES", value: "\(Int(weekAvgCalories))", delta: caloriesDelta)
+                    statRow(label: "PROTEIN", value: "\(Int(weekAvgProtein))g", delta: proteinDelta)
+                    statRow(label: "CARBS", value: "\(Int(weekAvgCarbs))g", delta: carbsDelta)
+                    statRow(label: "FAT", value: "\(Int(weekAvgFat))g", delta: fatDelta)
                 }
-                .frame(maxWidth: .infinity, alignment: .leading)
+
+                Spacer()
+
+                VStack(alignment: .trailing, spacing: 10) {
+                    deltaLabel(caloriesDelta)
+                    deltaLabel(proteinDelta)
+                    deltaLabel(carbsDelta)
+                    deltaLabel(fatDelta)
+                }
             }
         }
         .padding(.horizontal, 16)
@@ -349,8 +359,8 @@ struct AnalyticsView: View {
     }
 
     // MARK: - Stat row
-    private func statRow(label: String, value: String, delta: Float, deltaIsGood: Bool?) -> some View {
-        HStack(alignment: .firstTextBaseline) {
+    private func statRow(label: String, value: String, delta: Float) -> some View {
+        HStack(alignment: .firstTextBaseline, spacing: 10) {
             Text(label)
                 .font(.system(size: 10, weight: .semibold))
                 .foregroundColor(.textVeryMuted)
@@ -360,18 +370,21 @@ struct AnalyticsView: View {
             Text(value)
                 .font(.system(size: 14, weight: .medium, design: .monospaced))
                 .foregroundColor(.white)
+        }
+    }
 
-            Spacer()
-
+    // MARK: - Delta label
+    private func deltaLabel(_ delta: Float) -> some View {
+        Group {
             if delta != 0 {
                 let arrow = delta > 0 ? "↑" : "↓"
-                let color: Color = {
-                    guard let isGood = deltaIsGood else { return .textVeryMuted }
-                    return isGood ? .green.opacity(0.8) : .red.opacity(0.7)
-                }()
+                let color: Color = delta > 0 ? .green.opacity(0.8) : .red.opacity(0.7)
                 Text("\(arrow) \(Int(abs(delta)))")
                     .font(.system(size: 10, design: .monospaced))
                     .foregroundColor(color)
+            } else {
+                Text(" ")
+                    .font(.system(size: 10, design: .monospaced))
             }
         }
     }
