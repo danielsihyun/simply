@@ -253,8 +253,6 @@ struct AnalyticsView: View {
                 Text("This Month")
                     .font(.system(size: 13))
                     .foregroundColor(.textMuted)
-
-                Spacer(minLength: 0)
             }
             .frame(maxWidth: .infinity, alignment: .leading)
 
@@ -274,7 +272,7 @@ struct AnalyticsView: View {
 
     // MARK: - Macro Balance + Weekly Averages card
     private var macroBalanceCard: some View {
-        VStack(alignment: .leading, spacing: 12) {
+        VStack(alignment: .leading, spacing: 14) {
             Text("THIS WEEK")
                 .font(.system(size: 11, weight: .semibold))
                 .foregroundColor(.textMuted)
@@ -282,7 +280,7 @@ struct AnalyticsView: View {
 
             HStack(alignment: .center, spacing: 0) {
                 macroRing
-                    .frame(width: 150, height: 150)
+                    .frame(width: 110, height: 110)
                     .padding(.leading, 8)
 
                 Spacer()
@@ -310,29 +308,29 @@ struct AnalyticsView: View {
 
         return ZStack {
             Circle()
-                .stroke(Color.white.opacity(0.06), lineWidth: 18)
+                .stroke(Color.white.opacity(0.06), lineWidth: 14)
 
             Circle()
                 .trim(from: 0, to: CGFloat(proteinPct))
-                .stroke(macroColors.protein.opacity(0.85), style: StrokeStyle(lineWidth: 18, lineCap: .butt))
+                .stroke(macroColors.protein.opacity(0.85), style: StrokeStyle(lineWidth: 14, lineCap: .butt))
                 .rotationEffect(.degrees(-90))
 
             Circle()
                 .trim(from: CGFloat(proteinPct), to: CGFloat(proteinPct + carbsPct))
-                .stroke(macroColors.carbs.opacity(0.85), style: StrokeStyle(lineWidth: 18, lineCap: .butt))
+                .stroke(macroColors.carbs.opacity(0.85), style: StrokeStyle(lineWidth: 14, lineCap: .butt))
                 .rotationEffect(.degrees(-90))
 
             Circle()
                 .trim(from: CGFloat(proteinPct + carbsPct), to: CGFloat(proteinPct + carbsPct + fatPct))
-                .stroke(macroColors.fat.opacity(0.85), style: StrokeStyle(lineWidth: 18, lineCap: .butt))
+                .stroke(macroColors.fat.opacity(0.85), style: StrokeStyle(lineWidth: 14, lineCap: .butt))
                 .rotationEffect(.degrees(-90))
 
-            VStack(spacing: 3) {
+            VStack(spacing: 2) {
                 Text("\(Int(proteinPct * 100))/\(Int(carbsPct * 100))/\(Int(fatPct * 100))")
-                    .font(.system(size: 14, weight: .medium, design: .monospaced))
+                    .font(.system(size: 11, weight: .medium, design: .monospaced))
                     .foregroundColor(.white.opacity(0.7))
                 Text("P/C/F")
-                    .font(.system(size: 9))
+                    .font(.system(size: 8))
                     .foregroundColor(.textVeryMuted)
                     .tracking(0.5)
             }
