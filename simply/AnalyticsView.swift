@@ -297,20 +297,11 @@ struct AnalyticsView: View {
 
                 Spacer()
 
-                VStack(alignment: .leading, spacing: 10) {
+                VStack(spacing: 10) {
                     statRow(label: "CALORIES", value: "\(Int(weekAvgCalories))", delta: caloriesDelta)
                     statRow(label: "PROTEIN", value: "\(Int(weekAvgProtein))g", delta: proteinDelta)
                     statRow(label: "CARBS", value: "\(Int(weekAvgCarbs))g", delta: carbsDelta)
                     statRow(label: "FAT", value: "\(Int(weekAvgFat))g", delta: fatDelta)
-                }
-
-                Spacer()
-
-                VStack(alignment: .trailing, spacing: 10) {
-                    deltaLabel(caloriesDelta)
-                    deltaLabel(proteinDelta)
-                    deltaLabel(carbsDelta)
-                    deltaLabel(fatDelta)
                 }
             }
         }
@@ -380,11 +371,11 @@ struct AnalyticsView: View {
                 let arrow = delta > 0 ? "↑" : "↓"
                 let color: Color = delta > 0 ? .green.opacity(0.8) : .red.opacity(0.7)
                 Text("\(arrow) \(Int(abs(delta)))")
-                    .font(.system(size: 10, design: .monospaced))
+                    .font(.system(size: 14, weight: .medium, design: .monospaced))
                     .foregroundColor(color)
             } else {
                 Text(" ")
-                    .font(.system(size: 10, design: .monospaced))
+                    .font(.system(size: 14, weight: .medium, design: .monospaced))
             }
         }
     }
