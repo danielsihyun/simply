@@ -21,6 +21,15 @@ struct AnalyticsView: View {
     @State private var currentDay: Int = 0
     @State private var isLoading = true
 
+    @State private var weekAvgCalories: Float = 0
+    @State private var weekAvgProtein: Float = 0
+    @State private var weekAvgCarbs: Float = 0
+    @State private var weekAvgFat: Float = 0
+    @State private var caloriesDelta: Float = 0
+    @State private var proteinDelta: Float = 0
+    @State private var carbsDelta: Float = 0
+    @State private var fatDelta: Float = 0
+
     private var calGoal: Float { Float(authService.profile?.calGoal ?? 2200) }
 
     var body: some View {
@@ -49,6 +58,7 @@ struct AnalyticsView: View {
                         streakCard
                         chartCard
                         goalMetCard
+                        macroBalanceCard
                     }
                     .padding(.horizontal, 18)
                     .padding(.bottom, 40)
@@ -264,6 +274,108 @@ struct AnalyticsView: View {
         .cornerRadius(14)
     }
 
+    // MARK: - Macro Balance + Weekly Averages card
+    private var macroBalanceCard: some View {
+        VStack(alignment: .leading, spacing: 0) {
+            HStack {
+                Text("THIS WEEK")
+                    .font(.system(size: 11, weight: .semibold))
+                    .foregroundColor(.textMuted)
+                    .tracking(0.8)
+
+                Spacer()
+
+                Text("vs last week")
+                    .font(.system(size: 10))
+                    .foregroundColor(.textVeryMuted)
+            }
+            .padding(.bottom, 16)
+
+            HStack(alignment: .center, spacing: 18) {
+                macroRing
+                    .frame(width: 110, height: 110)
+
+                VStack(alignment: .leading, spacing: 10) {
+                    statRow(label: "CALORIES", value: "\(Int(weekAvgCalories))", delta: caloriesDelta, deltaIsGood: caloriesDelta <= 0)
+                    statRow(label: "PROTEIN", value: "\(Int(weekAvgProtein))g", delta: proteinDelta, deltaIsGood: proteinDelta >= 0)
+                    statRow(label: "CARBS", value: "\(Int(weekAvgCarbs))g", delta: carbsDelta, deltaIsGood: nil)
+                    statRow(label: "FAT", value: "\(Int(weekAvgFat))g", delta: fatDelta, deltaIsGood: nil)
+                }
+                .frame(maxWidth: .infinity, alignment: .leading)
+            }
+        }
+        .padding(.horizontal, 16)
+        .padding(.vertical, 14)
+        .background(Color.bgCard)
+        .cornerRadius(14)
+    }
+
+    // MARK: - Macro ring
+    private var macroRing: some View {
+        let total = max(weekAvgProtein * 4 + weekAvgCarbs * 4 + weekAvgFat * 9, 1)
+        let proteinPct = (weekAvgProtein * 4) / total
+        let carbsPct = (weekAvgCarbs * 4) / total
+        let fatPct = (weekAvgFat * 9) / total
+
+        return ZStack {
+            Circle()
+                .stroke(Color.white.opacity(0.06), lineWidth: 14)
+
+            Circle()
+                .trim(from: 0, to: CGFloat(proteinPct))
+                .stroke(macroColors.protein.opacity(0.85), style: StrokeStyle(lineWidth: 14, lineCap: .butt))
+                .rotationEffect(.degrees(-90))
+
+            Circle()
+                .trim(from: CGFloat(proteinPct), to: CGFloat(proteinPct + carbsPct))
+                .stroke(macroColors.carbs.opacity(0.85), style: StrokeStyle(lineWidth: 14, lineCap: .butt))
+                .rotationEffect(.degrees(-90))
+
+            Circle()
+                .trim(from: CGFloat(proteinPct + carbsPct), to: CGFloat(proteinPct + carbsPct + fatPct))
+                .stroke(macroColors.fat.opacity(0.85), style: StrokeStyle(lineWidth: 14, lineCap: .butt))
+                .rotationEffect(.degrees(-90))
+
+            VStack(spacing: 2) {
+                Text("\(Int(proteinPct * 100))/\(Int(carbsPct * 100))/\(Int(fatPct * 100))")
+                    .font(.system(size: 11, weight: .medium, design: .monospaced))
+                    .foregroundColor(.white.opacity(0.7))
+                Text("P/C/F")
+                    .font(.system(size: 8))
+                    .foregroundColor(.textVeryMuted)
+                    .tracking(0.5)
+            }
+        }
+    }
+
+    // MARK: - Stat row
+    private func statRow(label: String, value: String, delta: Float, deltaIsGood: Bool?) -> some View {
+        HStack(alignment: .firstTextBaseline) {
+            Text(label)
+                .font(.system(size: 10, weight: .semibold))
+                .foregroundColor(.textVeryMuted)
+                .tracking(0.6)
+                .frame(width: 60, alignment: .leading)
+
+            Text(value)
+                .font(.system(size: 14, weight: .medium, design: .monospaced))
+                .foregroundColor(.white)
+
+            Spacer()
+
+            if delta != 0 {
+                let arrow = delta > 0 ? "↑" : "↓"
+                let color: Color = {
+                    guard let isGood = deltaIsGood else { return .textVeryMuted }
+                    return isGood ? .green.opacity(0.8) : .red.opacity(0.7)
+                }()
+                Text("\(arrow) \(Int(abs(delta)))")
+                    .font(.system(size: 10, design: .monospaced))
+                    .foregroundColor(color)
+            }
+        }
+    }
+
     // MARK: - Dot grid
     private func dotGrid(daysInMonth: Int, firstWeekday: Int, todayDay: Int, metDays: Set<Int>) -> some View {
         let offset = firstWeekday - 1
@@ -386,6 +498,28 @@ struct AnalyticsView: View {
                 chart.append(MacroChartEntry(date: date, macro: "Protein", calories: proteinCal))
             }
 
+            // Weekly averages
+            func avg(daysAgoStart: Int, daysAgoEnd: Int) -> (cal: Float, p: Float, c: Float, f: Float) {
+                var totals = (cal: Float(0), p: Float(0), c: Float(0), f: Float(0))
+                var count = 0
+                for daysAgo in daysAgoEnd...daysAgoStart {
+                    let date = cal.date(byAdding: .day, value: -daysAgo, to: cal.startOfDay(for: today))!
+                    let key = formatter.string(from: date)
+                    if let data = grouped[key] {
+                        totals.cal += data.cal
+                        totals.p += data.protein
+                        totals.c += data.carbs
+                        totals.f += data.fat
+                        count += 1
+                    }
+                }
+                let divisor = Float(max(count, 1))
+                return (totals.cal / divisor, totals.p / divisor, totals.c / divisor, totals.f / divisor)
+            }
+
+            let thisWeek = avg(daysAgoStart: 6, daysAgoEnd: 0)
+            let lastWeek = avg(daysAgoStart: 13, daysAgoEnd: 7)
+
             let goal = calGoal
             var metDays: Set<Int> = []
             let monthPrefix = String(formatter.string(from: firstOfMonth).prefix(7))
@@ -405,6 +539,14 @@ struct AnalyticsView: View {
                 self.chartEntries = chart
                 self.goalMetDays = metDays
                 self.currentDay = todayDay
+                self.weekAvgCalories = thisWeek.cal
+                self.weekAvgProtein = thisWeek.p
+                self.weekAvgCarbs = thisWeek.c
+                self.weekAvgFat = thisWeek.f
+                self.caloriesDelta = thisWeek.cal - lastWeek.cal
+                self.proteinDelta = thisWeek.p - lastWeek.p
+                self.carbsDelta = thisWeek.c - lastWeek.c
+                self.fatDelta = thisWeek.f - lastWeek.f
                 self.isLoading = false
             }
         } catch {
