@@ -53,16 +53,14 @@ struct AnalyticsView: View {
                 .padding(.top, 16)
                 .padding(.bottom, 24)
 
-                ScrollView {
-                    VStack(alignment: .leading, spacing: 16) {
-                        streakCard
-                        chartCard
-                        goalMetCard
-                        macroBalanceCard
-                    }
-                    .padding(.horizontal, 18)
-                    .padding(.bottom, 40)
+                VStack(alignment: .leading, spacing: 16) {
+                    streakCard
+                    chartCard
+                    goalMetCard
+                    macroBalanceCard
                 }
+                .padding(.horizontal, 18)
+                .padding(.bottom, 18)
             }
         }
         .task {
@@ -96,8 +94,7 @@ struct AnalyticsView: View {
                     ProgressView()
                         .tint(.textMuted)
                 }
-                .frame(maxWidth: .infinity)
-                .frame(height: 240)
+                .frame(maxWidth: .infinity, maxHeight: .infinity)
             } else if chartEntries.isEmpty {
                 VStack(spacing: 6) {
                     Text("No data yet")
@@ -107,8 +104,7 @@ struct AnalyticsView: View {
                         .font(.system(size: 12))
                         .foregroundColor(.textVeryMuted)
                 }
-                .frame(maxWidth: .infinity)
-                .frame(height: 240)
+                .frame(maxWidth: .infinity, maxHeight: .infinity)
             } else {
                 Chart(chartEntries) { entry in
                     AreaMark(
@@ -150,11 +146,12 @@ struct AnalyticsView: View {
                     }
                 }
                 .chartLegend(.hidden)
-                .frame(height: 240)
+                .frame(maxHeight: .infinity)
             }
         }
         .padding(.horizontal, 16)
         .padding(.vertical, 14)
+        .frame(maxWidth: .infinity, maxHeight: .infinity)
         .background(Color.bgCard)
         .cornerRadius(14)
     }
@@ -293,7 +290,7 @@ struct AnalyticsView: View {
 
             HStack(alignment: .center, spacing: 0) {
                 macroRing
-                    .frame(width: 110, height: 110)
+                    .frame(width: 90, height: 90)
                     .padding(.leading, 8)
 
                 Spacer()
