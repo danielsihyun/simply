@@ -294,6 +294,7 @@ struct AnalyticsView: View {
             HStack(alignment: .center, spacing: 0) {
                 macroRing
                     .frame(width: 110, height: 110)
+                    .padding(.leading, 8)
 
                 Spacer()
 
@@ -351,16 +352,20 @@ struct AnalyticsView: View {
 
     // MARK: - Stat row
     private func statRow(label: String, value: String, delta: Float) -> some View {
-        HStack(alignment: .firstTextBaseline, spacing: 10) {
+        HStack(alignment: .firstTextBaseline, spacing: 0) {
             Text(label)
                 .font(.system(size: 10, weight: .semibold))
                 .foregroundColor(.textVeryMuted)
                 .tracking(0.6)
-                .frame(width: 60, alignment: .leading)
+                .frame(width: 70, alignment: .leading)
 
             Text(value)
                 .font(.system(size: 14, weight: .medium, design: .monospaced))
                 .foregroundColor(.white)
+                .frame(width: 70, alignment: .leading)
+
+            deltaLabel(delta)
+                .frame(width: 50, alignment: .trailing)
         }
     }
 
