@@ -682,7 +682,7 @@ struct HomeView: View {
                                     .cornerRadius(4)
                             }
                         } else {
-                            Text(customStep == .calories ? "cal3" : "g")
+                            Text(customStep == .calories ? "cal4" : "g")
                                 .font(.system(size: 11))
                                 .foregroundColor(.textMuted)
                         }
